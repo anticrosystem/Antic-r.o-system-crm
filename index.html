@@ -666,8 +666,15 @@ const FIREBASE_DEFAULT_CONFIG={
   measurementId:"G-K14QCRYQP3"
 };
 function getFirebaseConfig(){
-  try{return JSON.parse(localStorage.getItem(FIREBASE_KEY)||"null")||FIREBASE_DEFAULT_CONFIG}
-  catch(e){console.warn("Invalid saved Firebase config; using bundled project config",e);return FIREBASE_DEFAULT_CONFIG}
+  try{
+    const saved=JSON.parse(localStorage.getItem(FIREBASE_KEY)||"null");
+    // Ignore stale/empty configs saved by an earlier Local-only build.
+    if(saved && saved.apiKey && saved.projectId) return saved;
+    return FIREBASE_DEFAULT_CONFIG;
+  }catch(e){
+    console.warn("Invalid saved Firebase config; using bundled project config",e);
+    return FIREBASE_DEFAULT_CONFIG;
+  }
 }
 function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(x)x.textContent=text;const i=document.getElementById("cloudSettingsInfo");if(i)i.textContent=text+(firebaseAuth?.currentUser?" · "+firebaseAuth.currentUser.email:"")}
 function initFirebase(){
