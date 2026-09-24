@@ -188,7 +188,7 @@ th{background:#f8fafc;color:#53677d}
       <input id="loginEmail" type="email" placeholder="Admin email">
       <input id="loginPassword" type="password" placeholder="Password">
       <button class="btn primary" style="width:100%" onclick="cloudLogin()">🔐 Login & Sync</button>
-      
+      <button class="btn" style="width:100%;margin-top:7px" onclick="cloudCreateAccount()">➕ Create Admin Account</button>
     </div>
     <div id="authMsg" class="mini" style="margin-top:10px"></div>
   </div>
@@ -678,50 +678,20 @@ function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(
 function initFirebase(){
   cloudReady=false;
   const cfg=getFirebaseConfig();
-  if(!cfg||!cfg.apiKey||!cfg.projectId){
-    setCloudStatus("Firebase required · Login locked");
-    showLoginOverlay();
-    return false;
-  }
-  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){
-    setCloudStatus("Firebase SDK failed to load · Check internet/CDN");
-    document.getElementById("authMsg").textContent="Firebase SDK load નથી થયું. Internet/CDN તપાસો.";
-    showLoginOverlay();
-    console.error("Firebase compat SDK unavailable");
-    return false;
-  }
+  if(!cfg||!cfg.apiKey||!cfg.projectId){setCloudStatus("Firebase not configured · Local mode");return false}
+  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){setCloudStatus("Firebase SDK failed to load · Check internet/CDN");console.error("Firebase compat SDK unavailable");return false}
   try{
     firebaseApp=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
-    firebaseAuth=firebaseApp.auth();
-    firestore=firebaseApp.firestore();
+    firebaseAuth=firebase.auth();
+    firestore=firebase.firestore();
     cloudReady=true;
-    setCloudStatus("Firebase ready · Login required");
-    // Do not keep the user signed in between app launches.
-    firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.NONE).then(()=>{
-      firebaseAuth.onAuthStateChanged(async user=>{
-        if(user){
-          setCloudStatus("Connected · "+user.email);
-          hideLoginOverlay();
-          await loadCloudData();
-        }else{
-          setCloudStatus("Firebase ready · Not signed in");
-          showLoginOverlay();
-        }
-      });
-    }).catch(e=>{
-      setCloudStatus("Authentication setup error");
-      document.getElementById("authMsg").textContent=e.message||"Could not initialize secure login.";
-      showLoginOverlay();
+    setCloudStatus("Firebase ready · Sign in to sync");
+    firebaseAuth.onAuthStateChanged(async user=>{
+      if(user){setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();}
+      else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
     });
     return true;
-  }catch(e){
-    cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;
-    setCloudStatus("Firebase init error · "+(e.code||e.message));
-    document.getElementById("authMsg").textContent=e.message||"Firebase initialization failed.";
-    showLoginOverlay();
-    console.error("Firebase init failed",e);
-    return false;
-  }
+  }catch(e){cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;setCloudStatus("Firebase init error · "+(e.code||e.message));console.error("Firebase init failed",e);return false}
 }
 async function cloudUserBase(){return firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("_root")}
 async function commitFirestoreOps(ops){
@@ -825,7 +795,7 @@ function openCloudSetup(){document.getElementById("firebaseConfigSettings").valu
 function saveFirebaseConfig(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigSettings").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));closeModal("cloudSetupModal");if(initFirebase())showLoginOverlay()}catch(e){toast("Invalid Firebase config")}}
 function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigInput").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM.";initFirebase()}catch(e){document.getElementById("authMsg").textContent="Invalid Firebase config."}}
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
-function hideLoginOverlay(){if(!firebaseAuth?.currentUser)return;document.getElementById("authOverlay")?.classList.remove("show")}
+function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
 function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
 async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
 async function cloudCreateAccount(){
@@ -968,7 +938,7 @@ function openServiceInvoice(serviceId){
   const checks=["Cash","Cheque","UPI","Online Transfer","POS","Finance","EMI"].map(x=>`<span>${mode===x?"☑":"☐"} ${x}</span>`).join("");
   const address=c.address||s.address||"-";
   document.getElementById("invoicePreview").innerHTML=`
-  <div class="pws-head"><div class="pws-logo"><img src="purixa-logo.png" alt="Antic R.O System"></div><div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Nr. Harihar Chowk, Sadar Bazar, Sadar,<br>Rajkot, Gujarat 360001<br>☎ 9998267304 / 7016715463</div></div><div class="pws-inv"><b>SERVICE INVOICE</b><div>Bill No. : <strong>${esc(inv)}</strong><br>Date : <u>${esc(formatInvoiceDate(s.date||today))}</u></div></div></div>
+  <div class="pws-head"><div class="pws-logo"><img src="purixa-logo.png" alt="Antic R.O System"></div><div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Shop No.1, Madhav Complex,<br>Nr. SBI Bank, Cenal Road, Rajkot<br>☎ 9998267304 / 7016715463</div></div><div class="pws-inv"><b>SERVICE INVOICE</b><div>Bill No. : <strong>${esc(inv)}</strong><br>Date : <u>${esc(formatInvoiceDate(s.date||today))}</u></div></div></div>
   <div class="bill-info"><div class="row name-row"><b>Customer Name :</b><span>${esc(c.name||s.customer||"-")}</span></div><div class="row mobile-row"><b>Address :</b><span>${esc(address)}</span><b>Mobile No. :</b><span>${esc(c.mobile||s.mobile||"-")}</span></div></div>
   <div class="pay"><b>Mode of Payment:</b><div class="checks">${checks}</div></div>
   <table class="bill-table"><thead><tr><th>Sr. No.</th><th>Service / Part Description</th><th>Qty.</th><th>Price</th><th>Amount Rs.</th></tr></thead><tbody>
@@ -1052,7 +1022,7 @@ function fillAMCCustomerOptions(selected=""){const s=document.getElementById("am
 function openAMCModal(customerId=""){editingAMCId=null;renewingAMCId=null;document.getElementById("amcModalTitle").textContent="New AMC";fillAMCCustomerOptions(customerId);amcAmount.value=0;amcPaid.value=0;amcMode.value="Cash";amcStart.value=today;amcEnd.value=addDays(today,364);amcVisits.value=0;amcNext.value=addMonths(today,3);openModal("amcModal")}
 function editAMC(id){const a=db.amcs.find(x=>x.id===id);if(!a)return;editingAMCId=id;renewingAMCId=null;document.getElementById("amcModalTitle").textContent="Edit AMC";fillAMCCustomerOptions(a.customerId||"");if(!a.customerId){const opt=[...amcCustomer.options].find(o=>o.textContent.split(" — ")[0].toLowerCase()===String(a.customer||"").toLowerCase());if(opt)amcCustomer.value=opt.value}amcAmount.value=a.amount||0;amcPaid.value=Number(a.paid??a.amount??0);amcMode.value=a.paymentMode||"Cash";amcStart.value=a.start||"";amcEnd.value=a.end||"";amcVisits.value=a.visitsTotal??a.visits??0;amcNext.value=a.nextService||"";openModal("amcModal")}
 function saveAMC(e){e.preventDefault();const cid=Number(amcCustomer.value)||null;const c=db.customers.find(x=>x.id===cid);if(!c){toast("Please select a customer");return}const amount=+amcAmount.value||0,paid=Math.min(amount,Math.max(0,+amcPaid.value||0));const old=editingAMCId?db.amcs.find(x=>x.id===editingAMCId):null;const data={customerId:cid,customer:c.name,mobile:c.mobile||"",amount,paid,pending:Math.max(0,amount-paid),paymentMode:amcMode.value||"Cash",start:amcStart.value,end:amcEnd.value,visitsTotal:+amcVisits.value||0,nextService:amcNext.value,visitHistory:[]};if(renewingAMCId){const source=db.amcs.find(x=>x.id===renewingAMCId);db.amcs.unshift({id:Date.now(),...data,renewalOf:source?.id||null,renewalDate:today,visitHistory:[]});c.amc=data.end||"";persist();e.target.reset();closeModal("amcModal");renewingAMCId=null;editingAMCId=null;toast("🔄 AMC renewed successfully");return}if(editingAMCId){if(old)Object.assign(old,{...data,visitHistory:Array.isArray(old.visitHistory)?old.visitHistory:[]})}else db.amcs.unshift({id:Date.now(),...data});c.amc=data.end||"";persist();e.target.reset();closeModal("amcModal");toast(editingAMCId?"AMC updated":"AMC saved");editingAMCId=null;renewingAMCId=null}
-function openAMCInvoice(amcId){const a=db.amcs.find(x=>x.id===amcId);if(!a){toast("AMC not found");return}const c=db.customers.find(x=>x.id===a.customerId)||{};currentAMCInvoiceMobile=c.mobile||a.mobile||"";let inv=String(a.invoiceNo||"").replace(/^PWS-AMC-/i,"");if(!/^\d+$/.test(inv)||Number(inv)<1||Number(inv)>999999){inv=nextBillNumber();a.invoiceNo=inv}const total=Number(a.amount||0),paid=Number(a.paid??total),pending=Math.max(0,Number(a.pending??(total-paid))),mode=String(a.paymentMode||"Cash");const checks=["Cash","Cheque","UPI","Online Transfer","POS","Finance","EMI"].map(x=>`<span>${mode===x?"☑":"☐"} ${x}</span>`).join("");document.getElementById("amcInvoicePreview").innerHTML=`<div class="pws-head"><div class="pws-logo"><img src="purixa-logo.png" alt="Antic R.O System"></div><div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Nr. Harihar Chowk, Sadar Bazar, Sadar,<br>Rajkot, Gujarat 360001<br>☎ 9998267304 / 7016715463</div></div><div class="pws-inv"><b>AMC INVOICE</b><div>Bill No. : <strong>${esc(inv)}</strong><br>Date : <u>${esc(formatInvoiceDate(a.invoiceDate||today))}</u></div></div></div><div class="bill-info"><div class="row name-row"><b>Customer Name :</b><span>${esc(c.name||a.customer||"-")}</span></div><div class="row mobile-row"><b>Address :</b><span>${esc(c.address||"-")}</span><b>Mobile No. :</b><span>${esc(c.mobile||a.mobile||"-")}</span></div></div><div class="pay"><b>Mode of Payment:</b><div class="checks">${checks}</div></div><table class="bill-table"><thead><tr><th>Sr. No.</th><th>Item Description</th><th>Qty.</th><th>Price</th><th>Amount Rs.</th></tr></thead><tbody><tr><td style="text-align:center">1</td><td>AMC – Annual Maintenance Contract<br><small><b>AMC Period :</b> <span class="amc-period-date">${esc(formatInvoiceDate(a.start||"-"))}</span> <span class="amc-period-to">to</span> <span class="amc-period-date">${esc(formatInvoiceDate(a.end||"-"))}</span></small></td><td>1</td><td>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr class="item-spacer"><td></td><td></td><td></td><td></td><td></td></tr></tbody></table><div class="summary"><div class="summary-left"><div class="words"><b>Rupees :</b> ${esc(numberWords(total))} Only</div><div class="warranty"><b>Warranty & Service Details :</b> AMC period mein service + all parts FREE • Unlimited service visits</div><div class="gst"><b>GSTIN :</b> __________________</div><div class="terms"><b>નિયમો અને શરતો :</b><br>(1) AMC સમયગાળા દરમિયાન સર્વિસ અને જરૂરી પાર્ટ્સ મફત રહેશે.<br>(2) AMC દરમિયાન સર્વિસ વિઝિટની કોઈ મર્યાદા રહેશે નહીં.<br>(3) AMC સમયગાળો પૂરો થયા બાદ નવીનીકરણ જરૂરી રહેશે.<br>(4) સર્વિસ માટે ગ્રાહકે યોગ્ય સહકાર આપવાનો રહેશે.<br>(5) રાજકોટ જ્યુરિસ્ડિક્શનને આધીન.</div></div><div class="totalbox"><div><b>Total Rs.</b><b>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div><div><span>Dues (if any)</span><b>${pending.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div></div></div><div class="footer"><div class="sig"><div class="sig-line">Customer's Signature</div></div><div class="sig"><div class="for">For, ANTIC R.O SYSTEM WATER SOLUTION</div><img class="sig-img" src="authorized-signature-clean.png" alt="Authorised Signatory"><div class="sig-label">Authorised Signatory</div></div></div>`;persist();openModal("amcInvoiceModal")}
+function openAMCInvoice(amcId){const a=db.amcs.find(x=>x.id===amcId);if(!a){toast("AMC not found");return}const c=db.customers.find(x=>x.id===a.customerId)||{};currentAMCInvoiceMobile=c.mobile||a.mobile||"";let inv=String(a.invoiceNo||"").replace(/^PWS-AMC-/i,"");if(!/^\d+$/.test(inv)||Number(inv)<1||Number(inv)>999999){inv=nextBillNumber();a.invoiceNo=inv}const total=Number(a.amount||0),paid=Number(a.paid??total),pending=Math.max(0,Number(a.pending??(total-paid))),mode=String(a.paymentMode||"Cash");const checks=["Cash","Cheque","UPI","Online Transfer","POS","Finance","EMI"].map(x=>`<span>${mode===x?"☑":"☐"} ${x}</span>`).join("");document.getElementById("amcInvoicePreview").innerHTML=`<div class="pws-head"><div class="pws-logo"><img src="purixa-logo.png" alt="Antic R.O System"></div><div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Shop No.1, Madhav Complex,<br>Nr. SBI Bank, Cenal Road, Rajkot<br>☎ 9998267304 / 7016715463</div></div><div class="pws-inv"><b>AMC INVOICE</b><div>Bill No. : <strong>${esc(inv)}</strong><br>Date : <u>${esc(formatInvoiceDate(a.invoiceDate||today))}</u></div></div></div><div class="bill-info"><div class="row name-row"><b>Customer Name :</b><span>${esc(c.name||a.customer||"-")}</span></div><div class="row mobile-row"><b>Address :</b><span>${esc(c.address||"-")}</span><b>Mobile No. :</b><span>${esc(c.mobile||a.mobile||"-")}</span></div></div><div class="pay"><b>Mode of Payment:</b><div class="checks">${checks}</div></div><table class="bill-table"><thead><tr><th>Sr. No.</th><th>Item Description</th><th>Qty.</th><th>Price</th><th>Amount Rs.</th></tr></thead><tbody><tr><td style="text-align:center">1</td><td>AMC – Annual Maintenance Contract<br><small><b>AMC Period :</b> <span class="amc-period-date">${esc(formatInvoiceDate(a.start||"-"))}</span> <span class="amc-period-to">to</span> <span class="amc-period-date">${esc(formatInvoiceDate(a.end||"-"))}</span></small></td><td>1</td><td>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr class="item-spacer"><td></td><td></td><td></td><td></td><td></td></tr></tbody></table><div class="summary"><div class="summary-left"><div class="words"><b>Rupees :</b> ${esc(numberWords(total))} Only</div><div class="warranty"><b>Warranty & Service Details :</b> AMC period mein service + all parts FREE • Unlimited service visits</div><div class="gst"><b>GSTIN :</b> __________________</div><div class="terms"><b>નિયમો અને શરતો :</b><br>(1) AMC સમયગાળા દરમિયાન સર્વિસ અને જરૂરી પાર્ટ્સ મફત રહેશે.<br>(2) AMC દરમિયાન સર્વિસ વિઝિટની કોઈ મર્યાદા રહેશે નહીં.<br>(3) AMC સમયગાળો પૂરો થયા બાદ નવીનીકરણ જરૂરી રહેશે.<br>(4) સર્વિસ માટે ગ્રાહકે યોગ્ય સહકાર આપવાનો રહેશે.<br>(5) રાજકોટ જ્યુરિસ્ડિક્શનને આધીન.</div></div><div class="totalbox"><div><b>Total Rs.</b><b>${total.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div><div><span>Dues (if any)</span><b>${pending.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div></div></div><div class="footer"><div class="sig"><div class="sig-line">Customer's Signature</div></div><div class="sig"><div class="for">For, ANTIC R.O SYSTEM WATER SOLUTION</div><img class="sig-img" src="authorized-signature-clean.png" alt="Authorised Signatory"><div class="sig-label">Authorised Signatory</div></div></div>`;persist();openModal("amcInvoiceModal")}
 function printAMCInvoicePDF(){const invoice=document.getElementById("amcInvoicePreview");if(!invoice){toast("AMC Invoice not found");return}const w=window.open("","_blank","width=900,height=1200");if(!w){toast("Popup blocked. Please allow popups for this site.");return}const styles=[...document.querySelectorAll("style")].map(x=>x.outerHTML).join("\n");const links=[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>x.outerHTML).join("\n");const filename="Antic R.O System_AMC_Invoice_"+(document.querySelector("#amcInvoicePreview .pws-inv strong")?.textContent||"Invoice").trim().replace(/[^a-zA-Z0-9_-]/g,"");w.document.open();w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${filename}</title>${links}${styles}<style>html,body{margin:0!important;padding:0!important;background:#fff!important}body{width:210mm!important;min-height:297mm!important}#printInvoiceWrap{width:190mm!important;margin:0 auto!important;padding:0!important;background:#fff!important}#printInvoiceWrap .invoice{width:190mm!important;max-width:190mm!important;margin:0!important;overflow:visible!important}@page{size:A4 portrait;margin:10mm}@media print{html,body{width:210mm!important;background:#fff!important}body>#printInvoiceWrap{display:block!important;visibility:visible!important;width:190mm!important}#printInvoiceWrap{width:190mm!important}#printInvoiceWrap .invoice{display:block!important;visibility:visible!important}.invoice .bill-table tr.item-spacer{height:105mm!important}}</style></head><body><div id="printInvoiceWrap">${invoice.outerHTML}</div><script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},500)});<\/script></body></html>`);w.document.close();toast("AMC Invoice PDF ke liye Save as PDF select karein.")}
 function downloadAMCInvoicePDF(){printAMCInvoicePDF()}
 function shareAMCInvoiceWhatsApp(){const num=String(currentAMCInvoiceMobile||"").replace(/\D/g,"");const msg=encodeURIComponent("Antic R.O System AMC Invoice — PDF attached.");const w=printAMCInvoicePDF();if(w&&typeof w.addEventListener==="function"){try{w.addEventListener("afterprint",()=>{setTimeout(()=>{if(num)window.open("https://wa.me/91"+num+"?text="+msg,"_blank");else window.open("https://web.whatsapp.com/","_blank")},300)},{once:true})}catch(e){}}toast(num?"PDF Save karein. Print window band karte hi customer ka WhatsApp khulega.":"PDF Save karein. Print window band karte hi WhatsApp khulega.")}
@@ -1256,7 +1226,7 @@ function openInvoice(saleId){
   document.getElementById("invoicePreview").innerHTML=`
   <div class="pws-head">
     <div class="pws-logo"><img src="purixa-logo.png" alt="Antic R.O System"></div>
-    <div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Nr. Harihar Chowk, Sadar Bazar, Sadar,<br>Rajkot, Gujarat 360001<br>☎ 9998267304 / 7016715463</div></div>
+    <div class="pws-title"><h2>ANTIC R.O SYSTEM WATER SOLUTION</h2><div>Shop No.1, Madhav Complex,<br>Nr. SBI Bank, Cenal Road, Rajkot<br>☎ 9998267304 / 7016715463</div></div>
     <div class="pws-inv"><b>INVOICE</b><div>Bill No. : <strong>${esc(inv.replace(/^PWS-/,""))}</strong><br>Date : <u>${esc(formatInvoiceDate(s.date||today))}</u></div></div>
   </div>
   <div class="bill-info">
@@ -1549,7 +1519,6 @@ function mobileBottomNav(){
 }
 mobileBottomNav();
 
-showLoginOverlay();
 updateTopAction("dashboard");
 renderAll();
 fillSaleCustomerList();
