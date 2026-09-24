@@ -60,7 +60,6 @@ th{background:#f8fafc;color:#53677d}
 @media(max-width:900px){.reminder-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.reminder-summary{grid-template-columns:1fr}}
 
-#authOverlay,#cloudSetupModal,#firebaseSetupBox{display:none!important}
 </style>
 
 <style>
@@ -576,6 +575,9 @@ th{background:#f8fafc;color:#53677d}
 <button id="pwaInstallBtn" type="button" onclick="installPWA()">📲 Install Antic R.O System CRM</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 
 
@@ -650,9 +652,28 @@ function normalizeService(s,d=emptyDB()){
 }
 let cloudSyncing=false, cloudReady=false, firebaseApp=null, firebaseAuth=null, firestore=null;
 const FIREBASE_KEY="purixaFirebaseConfig_v20_2";
-function getFirebaseConfig(){return null}
+function getFirebaseConfig(){
+  try{return JSON.parse(localStorage.getItem(FIREBASE_KEY)||"null")}catch(e){console.warn("Invalid saved Firebase config",e);return null}
+}
 function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(x)x.textContent=text;const i=document.getElementById("cloudSettingsInfo");if(i)i.textContent=text+(firebaseAuth?.currentUser?" · "+firebaseAuth.currentUser.email:"")}
-function initFirebase(){cloudReady=false;setCloudStatus("Local-only mode · Firebase disabled");return false}
+function initFirebase(){
+  cloudReady=false;
+  const cfg=getFirebaseConfig();
+  if(!cfg){setCloudStatus("Firebase not configured · Local mode");return false}
+  if(!window.firebase || !firebase.initializeApp){setCloudStatus("Firebase SDK failed to load");console.error("Firebase SDK unavailable");return false}
+  try{
+    firebaseApp=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
+    firebaseAuth=firebase.auth();
+    firestore=firebase.firestore();
+    cloudReady=true;
+    setCloudStatus("Firebase ready · Sign in to sync");
+    firebaseAuth.onAuthStateChanged(async user=>{
+      if(user){setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();}
+      else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
+    });
+    return true;
+  }catch(e){cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;setCloudStatus("Firebase init error · "+(e.code||e.message));console.error("Firebase init failed",e);return false}
+}
 async function cloudUserBase(){return firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("_root")}
 async function commitFirestoreOps(ops){
   const CHUNK=450;
