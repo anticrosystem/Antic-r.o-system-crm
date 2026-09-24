@@ -1,0 +1,8 @@
+{
+  "name": "Antic R.O System CRM",
+  "short_name": "Antic CRM",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f8fc",
+  "theme_color": "#07549b"
+}
