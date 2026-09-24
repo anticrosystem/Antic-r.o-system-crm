@@ -60,7 +60,7 @@ th{background:#f8fafc;color:#53677d}
 @media(max-width:900px){.reminder-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.reminder-summary{grid-template-columns:1fr}}
 
-#authOverlay,#cloudSetupModal,#firebaseSetupBox{display:none!important}
+
 </style>
 
 <style>
@@ -183,14 +183,12 @@ th{background:#f8fafc;color:#53677d}
   "projectId":"..."
 }'></textarea>
       <button class="btn primary" style="width:100%" onclick="saveFirebaseConfigFromAuth()">☁️ Save Cloud Setup</button>
-      <button class="btn" style="width:100%;margin-top:8px" onclick="continueLocalMode()">Continue in Local Mode</button>
     </div>
     <div id="loginBox" style="display:none">
       <input id="loginEmail" type="email" placeholder="Admin email">
       <input id="loginPassword" type="password" placeholder="Password">
       <button class="btn primary" style="width:100%" onclick="cloudLogin()">🔐 Login & Sync</button>
       <button class="btn" style="width:100%;margin-top:7px" onclick="cloudCreateAccount()">➕ Create Admin Account</button>
-      <button class="btn" style="width:100%;margin-top:8px" onclick="continueLocalMode()">Use Local Mode</button>
     </div>
     <div id="authMsg" class="mini" style="margin-top:10px"></div>
   </div>
@@ -798,7 +796,7 @@ function saveFirebaseConfig(){try{const cfg=JSON.parse(document.getElementById("
 function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigInput").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM.";initFirebase()}catch(e){document.getElementById("authMsg").textContent="Invalid Firebase config."}}
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
 function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
-function continueLocalMode(){hideLoginOverlay();setCloudStatus("💾 Local Mode");toast("Using local mode") }
+function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
 async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
 async function cloudCreateAccount(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
