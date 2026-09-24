@@ -188,7 +188,7 @@ th{background:#f8fafc;color:#53677d}
       <input id="loginEmail" type="email" placeholder="Admin email">
       <input id="loginPassword" type="password" placeholder="Password">
       <button class="btn primary" style="width:100%" onclick="cloudLogin()">🔐 Login & Sync</button>
-      <button class="btn" style="width:100%;margin-top:7px" onclick="cloudCreateAccount()">➕ Create Admin Account</button>
+      
     </div>
     <div id="authMsg" class="mini" style="margin-top:10px"></div>
   </div>
@@ -678,20 +678,50 @@ function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(
 function initFirebase(){
   cloudReady=false;
   const cfg=getFirebaseConfig();
-  if(!cfg||!cfg.apiKey||!cfg.projectId){setCloudStatus("Firebase not configured · Local mode");return false}
-  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){setCloudStatus("Firebase SDK failed to load · Check internet/CDN");console.error("Firebase compat SDK unavailable");return false}
+  if(!cfg||!cfg.apiKey||!cfg.projectId){
+    setCloudStatus("Firebase required · Login locked");
+    showLoginOverlay();
+    return false;
+  }
+  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){
+    setCloudStatus("Firebase SDK failed to load · Check internet/CDN");
+    document.getElementById("authMsg").textContent="Firebase SDK load નથી થયું. Internet/CDN તપાસો.";
+    showLoginOverlay();
+    console.error("Firebase compat SDK unavailable");
+    return false;
+  }
   try{
     firebaseApp=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
-    firebaseAuth=firebase.auth();
-    firestore=firebase.firestore();
+    firebaseAuth=firebaseApp.auth();
+    firestore=firebaseApp.firestore();
     cloudReady=true;
-    setCloudStatus("Firebase ready · Sign in to sync");
-    firebaseAuth.onAuthStateChanged(async user=>{
-      if(user){setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();}
-      else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
+    setCloudStatus("Firebase ready · Login required");
+    // Do not keep the user signed in between app launches.
+    firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.NONE).then(()=>{
+      firebaseAuth.onAuthStateChanged(async user=>{
+        if(user){
+          setCloudStatus("Connected · "+user.email);
+          hideLoginOverlay();
+          await loadCloudData();
+        }else{
+          setCloudStatus("Firebase ready · Not signed in");
+          showLoginOverlay();
+        }
+      });
+    }).catch(e=>{
+      setCloudStatus("Authentication setup error");
+      document.getElementById("authMsg").textContent=e.message||"Could not initialize secure login.";
+      showLoginOverlay();
     });
     return true;
-  }catch(e){cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;setCloudStatus("Firebase init error · "+(e.code||e.message));console.error("Firebase init failed",e);return false}
+  }catch(e){
+    cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;
+    setCloudStatus("Firebase init error · "+(e.code||e.message));
+    document.getElementById("authMsg").textContent=e.message||"Firebase initialization failed.";
+    showLoginOverlay();
+    console.error("Firebase init failed",e);
+    return false;
+  }
 }
 async function cloudUserBase(){return firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("_root")}
 async function commitFirestoreOps(ops){
@@ -795,7 +825,7 @@ function openCloudSetup(){document.getElementById("firebaseConfigSettings").valu
 function saveFirebaseConfig(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigSettings").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));closeModal("cloudSetupModal");if(initFirebase())showLoginOverlay()}catch(e){toast("Invalid Firebase config")}}
 function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigInput").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM.";initFirebase()}catch(e){document.getElementById("authMsg").textContent="Invalid Firebase config."}}
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
-function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
+function hideLoginOverlay(){if(!firebaseAuth?.currentUser)return;document.getElementById("authOverlay")?.classList.remove("show")}
 function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
 async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
 async function cloudCreateAccount(){
@@ -1519,6 +1549,7 @@ function mobileBottomNav(){
 }
 mobileBottomNav();
 
+showLoginOverlay();
 updateTopAction("dashboard");
 renderAll();
 fillSaleCustomerList();
