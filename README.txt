@@ -1,11 +1,10 @@
-ANTIC R.O SYSTEM CRM — LOCAL ONLY
+ANTIC R.O SYSTEM CRM — v22.26 PWA
 
-1. Extract ZIP.
-2. Open index.html in a modern browser, or upload the files to a new GitHub repository and enable GitHub Pages.
-3. No Firebase SDK, authentication, Firestore, or cloud sync is included.
-4. Records are stored only in that browser's localStorage. They do not sync between devices. Export Backup regularly.
-5. All customer/sales/service data starts empty; no Purixa/friend business records are imported.
+Firebase-enabled build for GitHub Pages.
+- Firebase Web App config is prefilled for project antic-ro-system-crm.
+- Firebase Authentication (Email/Password) and Cloud Firestore are initialized through the Firebase compat SDK.
+- Firestore data is scoped to the signed-in user's UID.
+- Local browser storage remains enabled; cloud sync begins after successful Firebase login.
 
-Business: Antic R.O System
-Address: Shop No. 1, Madhav Complex, Opp. Chetan Hardware, Cenal Road, Rajkot
-Mobile: 90160 94313
+Read FIREBASE_SETUP.txt before first use. Enable Email/Password Authentication, create Firestore, and publish firestore.rules.
+Keep index.html and the supplied assets in the same repository directory.

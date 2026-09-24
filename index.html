@@ -60,6 +60,7 @@ th{background:#f8fafc;color:#53677d}
 @media(max-width:900px){.reminder-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.reminder-summary{grid-template-columns:1fr}}
 
+#authOverlay,#cloudSetupModal,#firebaseSetupBox{display:none!important}
 </style>
 
 <style>
@@ -574,10 +575,11 @@ th{background:#f8fafc;color:#53677d}
 <div class="toast" id="toast"></div>
 <button id="pwaInstallBtn" type="button" onclick="installPWA()">📲 Install Antic R.O System CRM</button>
 
+<!-- Firebase v10 compat SDKs: this CRM uses the namespaced firebase.auth()/firestore() API -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 
 
@@ -652,15 +654,27 @@ function normalizeService(s,d=emptyDB()){
 }
 let cloudSyncing=false, cloudReady=false, firebaseApp=null, firebaseAuth=null, firestore=null;
 const FIREBASE_KEY="purixaFirebaseConfig_v20_2";
+// Firebase Web App config supplied for the Antic R.O System CRM project.
+// This is client-side config; Firestore access is still protected by Firebase Auth + Rules.
+const FIREBASE_DEFAULT_CONFIG={
+  apiKey:"AIzaSyAaxOfEeouYjtAlcrJS8crpKQlg0SHoius",
+  authDomain:"antic-ro-system-crm.firebaseapp.com",
+  projectId:"antic-ro-system-crm",
+  storageBucket:"antic-ro-system-crm.firebasestorage.app",
+  messagingSenderId:"436236248799",
+  appId:"1:436236248799:web:a0887fdc2d745f4cf72b6a",
+  measurementId:"G-K14QCRYQP3"
+};
 function getFirebaseConfig(){
-  try{return JSON.parse(localStorage.getItem(FIREBASE_KEY)||"null")}catch(e){console.warn("Invalid saved Firebase config",e);return null}
+  try{return JSON.parse(localStorage.getItem(FIREBASE_KEY)||"null")||FIREBASE_DEFAULT_CONFIG}
+  catch(e){console.warn("Invalid saved Firebase config; using bundled project config",e);return FIREBASE_DEFAULT_CONFIG}
 }
 function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(x)x.textContent=text;const i=document.getElementById("cloudSettingsInfo");if(i)i.textContent=text+(firebaseAuth?.currentUser?" · "+firebaseAuth.currentUser.email:"")}
 function initFirebase(){
   cloudReady=false;
   const cfg=getFirebaseConfig();
-  if(!cfg){setCloudStatus("Firebase not configured · Local mode");return false}
-  if(!window.firebase || !firebase.initializeApp){setCloudStatus("Firebase SDK failed to load");console.error("Firebase SDK unavailable");return false}
+  if(!cfg||!cfg.apiKey||!cfg.projectId){setCloudStatus("Firebase not configured · Local mode");return false}
+  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){setCloudStatus("Firebase SDK failed to load · Check internet/CDN");console.error("Firebase compat SDK unavailable");return false}
   try{
     firebaseApp=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
     firebaseAuth=firebase.auth();

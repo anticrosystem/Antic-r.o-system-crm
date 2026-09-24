@@ -1,15 +1,21 @@
-ANTIC R.O SYSTEM CRM — FIREBASE SETUP (REPAIRED PACKAGE)
+ANTIC R.O SYSTEM CRM — FIREBASE CONNECTED BUILD
 
-1. Upload ALL files from this folder to the root of your GitHub Pages repository.
-2. Firebase Console > Project settings > Your apps > Web app > SDK setup and configuration > Config.
-3. In the CRM, open Settings > Configure Cloud. Paste the complete firebaseConfig JSON object and click Save & Connect.
-4. In Firebase Console > Authentication > Sign-in method, enable Email/Password.
-5. In Authentication, create an account (or use CRM Create Admin Account once).
-6. Create/enable Firestore Database. Publish the owner-only rules from firestore.rules.
-7. Log in to CRM. Settings > Firebase Test should pass.
+Firebase Web App config for project antic-ro-system-crm is prefilled in index.html.
+The CRM loads Firebase v10 COMPAT SDK files from Google's CDN and uses Firebase Authentication + Cloud Firestore.
 
-This repaired package loads Firebase compat SDKs, reads the saved config, initializes Firebase App/Auth/Firestore, and reacts to sign-in state. Your actual Firebase project config is NOT included; you must add it in the CRM. Firebase web config is client-side configuration, not a service-account private key.
+ONE-TIME FIREBASE CONSOLE SETUP:
+1. Firebase Console > Authentication > Get started > Sign-in method > enable Email/Password.
+2. Firebase Console > Firestore Database > Create database (production mode is fine).
+3. In Firestore > Rules, publish the contents of firestore.rules from this ZIP.
+4. Upload/replace the ZIP contents in the GitHub Pages repository. Keep index.html and all assets together.
+5. Open the published CRM with internet access. It should show Firebase ready and prompt for login.
+6. Choose Create Admin Account once, using your email and a password of at least 6 characters. Then use Login & Sync.
+7. After login, use Settings > Firebase Test to verify Firestore read/write/delete permissions.
 
-DATA NOTE: Existing CRM records in this browser remain in localStorage. Cloud data is scoped to the signed-in Firebase UID. Take a backup before testing or switching accounts.
-
-If login fails, check that Email/Password is enabled, the correct Firebase config was entered, and Firestore rules are published. Never use public read/write rules or share a service-account private key.
+IMPORTANT:
+- Firebase config is client-side web-app configuration, not a service-account private key.
+- Never publish or share a Firebase Service Account private key.
+- Do NOT use public read/write Firestore rules. The included rules restrict each signed-in user to their own UID path.
+- First successful login with an empty cloud account uploads the CRM data currently stored in that browser. Keep a backup before switching devices/accounts.
+- Cloud sync requires internet access. The CRM may continue in local mode if Firebase's CDN or network is unavailable.
+- Firebase config is also available in Settings > Configure Cloud if you need to change it later.
