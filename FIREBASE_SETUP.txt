@@ -1,0 +1,16 @@
+ANTIC R.O SYSTEM CRM — FIREBASE SETUP
+
+1. Extract this ZIP and upload its files to your GitHub Pages repository (keep index.html and assets together).
+2. Firebase Console > Project settings > Your apps > Antic crm web > SDK setup and configuration > Config.
+3. Copy the COMPLETE firebaseConfig object (apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId; measurementId if present).
+4. Open CRM > Settings > Configure Cloud. Paste the complete object as JSON and choose Save & Connect.
+5. Use Create Admin Account once with an email and password (at least 6 characters), then log in.
+6. Firebase Console > Firestore Database > Rules: publish the rules in firestore.rules from this ZIP.
+7. Settings > Firebase Test should pass after login.
+
+Important:
+- Firebase config is required from your actual Firebase console; it is not guessed from screenshots.
+- Firebase Web API keys are client config, not admin/service-account keys. Never share a service-account private key.
+- The CRM's local browser storage key is separated from the old Purixa key. This package does not bundle/import customer records.
+- Firestore sync is per signed-in Firebase user under users/{uid}/crm/.
+- Do not use public read/write rules. Deploy the included owner-only rules.
