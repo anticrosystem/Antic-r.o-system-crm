@@ -651,6 +651,7 @@ function normalizeService(s,d=emptyDB()){
   return {id:s.id||Date.now()+Math.random(),customerId,customer,mobile,problem:s.problem||s.type||"General Service",tech,technicianId,status:s.status||"Open",amount:Number(s.amount??s.charge??0),charge:Number(s.charge??s.amount??0),date:s.date||today,follow:s.follow||"",notes:s.notes||""};
 }
 let cloudSyncing=false, cloudReady=false, firebaseApp=null, firebaseAuth=null, firestore=null;
+let loginGrantedThisOpen=false;
 const FIREBASE_KEY="purixaFirebaseConfig_v20_2";
 // Firebase Web App config supplied for the Antic R.O System CRM project.
 // This is client-side config; Firestore access is still protected by Firebase Auth + Rules.
@@ -687,8 +688,10 @@ function initFirebase(){
     cloudReady=true;
     setCloudStatus("Firebase ready · Sign in to sync");
     firebaseAuth.onAuthStateChanged(async user=>{
-      if(user){setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();}
-      else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
+      if(user){
+        if(!loginGrantedThisOpen){ try{await firebaseAuth.signOut()}catch(e){console.error(e)} return; }
+        setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();
+      }else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
     });
     return true;
   }catch(e){cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;setCloudStatus("Firebase init error · "+(e.code||e.message));console.error("Firebase init failed",e);return false}
@@ -797,15 +800,15 @@ function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getEleme
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
 function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
 function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
-async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
+async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";loginGrantedThisOpen=true;await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){loginGrantedThisOpen=false;document.getElementById("authMsg").textContent=e.message||"Login failed"}}
 async function cloudCreateAccount(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
   const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
   if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password first.";return}
   if(pass.length<6){document.getElementById("authMsg").textContent="Password must be at least 6 characters.";return}
-  try{document.getElementById("authMsg").textContent="Creating account...";await firebaseAuth.createUserWithEmailAndPassword(email,pass);hideLoginOverlay();toast("Admin account created & logged in")}catch(e){document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
+  try{document.getElementById("authMsg").textContent="Creating account...";loginGrantedThisOpen=true;await firebaseAuth.createUserWithEmailAndPassword(email,pass);hideLoginOverlay();toast("Admin account created & logged in")}catch(e){loginGrantedThisOpen=false;document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
 }
-async function cloudLogout(){if(firebaseAuth?.currentUser){await firebaseAuth.signOut();showLoginOverlay()}}
+async function cloudLogout(){loginGrantedThisOpen=false;if(firebaseAuth?.currentUser){await firebaseAuth.signOut()}showLoginOverlay()}
 function cloudSyncNow(){if(!cloudReady||!firebaseAuth?.currentUser){toast("Please login to cloud first");return}syncCloudData(false)}
 function money(n){return "₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2})}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
