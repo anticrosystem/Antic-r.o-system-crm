@@ -1431,31 +1431,36 @@ function renderMonthlyGrowthPage(){
 }
 function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderMonthlyGrowthPage();renderReminders()}
 async function deleteSale(id){
-  const s=db.sales.find(x=>x.id===id);
-  if(!s)return;
-  const customerName=s.customer||db.customers.find(c=>c.id===s.customerId)?.name||"Customer";
-  const ok=confirm("Delete this sale permanently?\n\nCustomer: "+customerName+"\nProduct: "+(s.product||"-")+"\nTotal: "+money(s.total||0)+"\n\nThis also removes all payment entries attached to this sale. The customer itself will NOT be deleted.");
-  if(!ok)return;
-  if(cloudReady&&firebaseAuth?.currentUser){
-    try{
-      const base=await cloudUserBase();
-      await base.collection("sales").doc(String(id)).delete().catch(e=>{if(e?.code!=="not-found")throw e;});
-    }catch(e){
-      console.error(e);
-      toast("⚠️ Sale was NOT deleted. Firebase permission/error — your data is safe.");
-      return;
-    }
-  }
-  db.sales=db.sales.filter(x=>x.id!==id);
+  const saleId=Number(id);
+  const s=db.sales.find(x=>Number(x.id)===saleId);
+  if(!s){toast("Sale invoice not found");return false}
+  const customerName=s.customer||db.customers.find(c=>Number(c.id)===Number(s.customerId))?.name||"Customer";
+  const ok=confirm("Delete this sales invoice permanently?\n\nCustomer: "+customerName+"\nProduct: "+(s.product||"-")+"\nTotal: "+money(s.total||0)+"\n\nThe customer will NOT be deleted.");
+  if(!ok)return false;
+
+  // Remove the sale from the current CRM data first. Payment history is stored
+  // inside the sale record, so it is removed together with the invoice.
+  db.sales=db.sales.filter(x=>Number(x.id)!==saleId);
   localStorage.setItem(KEY,JSON.stringify(db));
   renderAll();
+
+  // Keep Firebase in sync. The normalized collection sync removes any cloud
+  // sale document that no longer exists locally.
   if(cloudReady&&firebaseAuth?.currentUser){
-    const success=await syncCloudData(true);
-    toast(success?"✅ Sale and payment history deleted from Cloud":"⚠️ Sale deleted, but Cloud verification failed — check Firebase permissions");
+    try{
+      await syncNormalizedCollections();
+      await syncCloudData(true);
+      toast("✅ Sales invoice deleted successfully");
+    }catch(e){
+      console.error(e);
+      toast("⚠️ Invoice deleted from this device; Cloud sync failed. Check Firebase permissions.");
+    }
   }else{
-    toast("Sale and its payment history deleted");
+    toast("✅ Sales invoice deleted successfully");
   }
+  return true;
 }
+
 async function deleteCurrentInvoice(){
   const id=currentInvoiceId;
   if(id===null||id===undefined){toast("Invoice record not found");return}
