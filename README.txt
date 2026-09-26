@@ -1,10 +1,11 @@
-ANTIC R.O SYSTEM CRM — v22.26 PWA
+Antic R.O System CRM - Updated App Icon
 
-Firebase-enabled build for GitHub Pages.
-- Firebase Web App config is prefilled for project antic-ro-system-crm.
-- Firebase Authentication (Email/Password) and Cloud Firestore are initialized through the Firebase compat SDK.
-- Firestore data is scoped to the signed-in user's UID.
-- Local browser storage remains enabled; cloud sync begins after successful Firebase login.
+Files:
+- index.html : CRM source
+- manifest.json : PWA app manifest
+- antic-ro-system-192.png : new app icon
+- antic-ro-system-512.png : new app icon
 
-Read FIREBASE_SETUP.txt before first use. Enable Email/Password Authentication, create Firestore, and publish firestore.rules.
-Keep index.html and the supplied assets in the same repository directory.
+The CRM application code is preserved; the app icon is changed through the PWA manifest.
+For GitHub Pages, upload/replace these files together in the same folder as index.html.
+If the old icon remains on an already-installed Android app, remove the old PWA shortcut/app and install it again after the new files are live.

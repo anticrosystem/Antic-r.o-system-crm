@@ -1,6 +1,6 @@
 {
-  "name": "Antic R.O System CRM Cloud",
-  "short_name": "Antic R.O System CRM",
+  "name": "Antic R.O System CRM",
+  "short_name": "Antic CRM",
   "id": "./",
   "start_url": "./",
   "scope": "./",
@@ -8,16 +8,16 @@
   "background_color": "#ffffff",
   "theme_color": "#0b6efd",
   "orientation": "portrait-primary",
-  "description": "Antic R.O System Water Solution business management CRM",
+  "description": "Antic R.O System business management CRM",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "antic-ro-system-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "antic-ro-system-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
