@@ -493,6 +493,7 @@ th{background:#f8fafc;color:#53677d}
 <button class="btn primary" onclick="window.print()">🖨️ Print</button>
 <button class="btn" onclick="downloadInvoicePDF()">📄 Download PDF</button>
 <button class="btn green" onclick="shareInvoiceWhatsApp()">📄 WhatsApp PDF</button>
+<button class="btn red" onclick="deleteCurrentInvoice()">🗑️ Delete Invoice</button>
 </div>
 </div></div>
 <div class="modal" id="amcInvoiceModal"><div class="modal-box">
@@ -692,7 +693,7 @@ const KEY="purixaCRM_v1";
 const today=new Date().toISOString().slice(0,10);
 const emptyDB=()=>({leads:[],customers:[],sales:[],services:[],amcs:[],technicians:[],invoiceCounter:701});
 let db=loadDB();
-let editingCustomerId=null, editingServiceId=null, currentInvoiceMobile="", currentAMCVisitId=null, editingAMCVisitIndex=null, currentAMCInvoiceMobile="";
+let editingCustomerId=null, editingServiceId=null, currentInvoiceMobile="", currentInvoiceType="", currentInvoiceId=null, currentAMCVisitId=null, editingAMCVisitIndex=null, currentAMCInvoiceMobile="";
 
 function loadDB(){
   try{
@@ -1036,6 +1037,7 @@ function editService(id){const s=db.services.find(x=>x.id===id);if(!s)return;edi
 function openServiceInvoice(serviceId){
   const s=db.services.find(x=>x.id===serviceId);if(!s){toast("Service not found");return}
   const c=db.customers.find(x=>x.id===s.customerId)||{};
+  currentInvoiceType="service";currentInvoiceId=serviceId;
   currentInvoiceMobile=c.mobile||s.mobile||"";
   let inv=String(s.serviceInvoiceNo||"").replace(/^PWS-SVC-/i,"");
   if(!/^\d+$/.test(inv)||Number(inv)<1||Number(inv)>999999){inv=nextBillNumber();s.serviceInvoiceNo=inv;}
@@ -1296,7 +1298,7 @@ function renderTech(){techTable.innerHTML=db.technicians.map(x=>`<tr><td>${esc(x
 function renderReports(){const total=db.leads.length,won=db.leads.filter(x=>x.status==="Won").length;rConversion.textContent=(total?Math.round(won/total*100):0)+"%";rCollected.textContent=money(db.sales.reduce((a,x)=>a+Number(x.paid||0),0));rService.textContent=money(db.services.filter(x=>x.status==="Completed").reduce((a,x)=>a+Number(x.amount??x.charge??0),0));rAMC.textContent=money(db.amcs.reduce((a,x)=>a+Number(x.amount||0),0));reportSummary.innerHTML=`<p><b>Leads:</b> ${total}</p><p><b>Won:</b> ${won}</p><p><b>Customers:</b> ${db.customers.length}</p><p><b>Total Sales:</b> ${money(db.sales.reduce((a,x)=>a+Number(x.total||0),0))}</p><p><b>Pending:</b> ${money(db.sales.reduce((a,x)=>a+Number(x.pending||0),0))}</p><p><b>Services:</b> ${db.services.length}</p><p><b>AMC:</b> ${db.amcs.length}</p>`;renderMonthlyGrowthChart()}
 function renderMonthlyGrowthChart(){const chart=document.getElementById("monthlyGrowthChart"),table=document.getElementById("monthlyGrowthTable");if(!chart||!table)return;const rows={};const add=(date,sales,service,count)=>{const m=String(date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(m))return;if(!rows[m])rows[m]={sales:0,service:0,count:0};rows[m].sales+=Number(sales||0);rows[m].service+=Number(service||0);rows[m].count+=Number(count||0)};db.sales.forEach(s=>add(s.date,s.total,0,1));db.services.forEach(s=>add(s.date,0,Number(s.amount??s.charge??0),1));const keys=Object.keys(rows).sort();if(!keys.length){chart.innerHTML='<div class="empty" style="width:100%">Sales or service invoice data will appear here month-wise.</div>';table.innerHTML="";return}const max=Math.max(...keys.map(k=>rows[k].sales+rows[k].service),1);const fmtMonth=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-IN",{month:"short",year:"numeric"})};let previous=null;chart.innerHTML=keys.map(k=>{const r=rows[k],totalAmount=r.sales+r.service,growth=previous===null?null:(previous===0?(totalAmount>0?100:0):((totalAmount-previous)/previous)*100);previous=totalAmount;const salesH=Math.max(2,Math.round((r.sales/max)*190)),serviceH=Math.max(2,Math.round((r.service/max)*190));const growthText=growth===null?"—":`${growth>=0?"↑":"↓"} ${Math.abs(growth).toFixed(1)}%`;const growthCls=growth===null?"growth-flat":growth>0?"growth-up":growth<0?"growth-down":"growth-flat";return `<div class="month-column"><div class="month-growth ${growthCls}">${growthText}</div><div class="month-bars" title="${esc(fmtMonth(k))} • Sales ${esc(money(r.sales))} • Service ${esc(money(r.service))}"><div class="month-bar sales" style="height:${salesH}px"></div><div class="month-bar service" style="height:${serviceH}px"></div></div><div class="month-total">${esc(money(totalAmount))}</div><div class="month-label">${esc(fmtMonth(k))}</div></div>`}).join("");previous=null;let html='<table><thead><tr><th>Month</th><th>Sales Invoices</th><th>Sales Amount</th><th>Service Invoices</th><th>Service Amount</th><th>Total Amount</th><th>Growth</th></tr></thead><tbody>';keys.forEach(k=>{const r=rows[k],totalAmount=r.sales+r.service,growth=previous===null?null:(previous===0?(totalAmount>0?100:0):((totalAmount-previous)/previous)*100);previous=totalAmount;const salesCount=db.sales.filter(s=>String(s.date||"").slice(0,7)===k).length,serviceCount=db.services.filter(s=>String(s.date||"").slice(0,7)===k).length;const growthText=growth===null?"—":`${growth>=0?"↑":"↓"} ${Math.abs(growth).toFixed(1)}%`,growthCls=growth===null?"growth-flat":growth>0?"growth-up":growth<0?"growth-down":"growth-flat";html+=`<tr><td><b>${esc(fmtMonth(k))}</b></td><td>${salesCount}</td><td>${money(r.sales)}</td><td>${serviceCount}</td><td>${money(r.service)}</td><td><b>${money(totalAmount)}</b></td><td class="${growthCls}">${growthText}</td></tr>`});html+='</tbody></table>';table.innerHTML=html}
 
-function viewInvoice(saleId){const s=db.sales.find(x=>x.id===saleId);if(!s){toast("Sale not found");return}const c=db.customers.find(x=>x.id===s.customerId)||{};currentInvoiceMobile=c.mobile||s.mobile||"";openInvoice(saleId)}
+function viewInvoice(saleId){const s=db.sales.find(x=>x.id===saleId);if(!s){toast("Sale not found");return}const c=db.customers.find(x=>x.id===s.customerId)||{};currentInvoiceType="sale";currentInvoiceId=saleId;currentInvoiceMobile=c.mobile||s.mobile||"";openInvoice(saleId)}
 function numberWords(n){
   n=Math.round(Number(n)||0);
   if(n===0)return "Zero";
@@ -1454,6 +1456,27 @@ async function deleteSale(id){
     toast("Sale and its payment history deleted");
   }
 }
+async function deleteCurrentInvoice(){
+  const id=currentInvoiceId;
+  if(id===null||id===undefined){toast("Invoice record not found");return}
+  if(currentInvoiceType==="sale"){
+    const exists=db.sales.some(x=>x.id===id);
+    if(!exists){toast("Sale invoice not found");return}
+    await deleteSale(id);
+  }else if(currentInvoiceType==="service"){
+    const s=db.services.find(x=>x.id===id);
+    if(!s){toast("Service invoice not found");return}
+    const customerName=s.customer||db.customers.find(c=>c.id===s.customerId)?.name||"Customer";
+    const ok=confirm("Delete this service invoice permanently?\n\nCustomer: "+customerName+"\nService: "+(s.problem||"Service")+"\nAmount: "+money(s.totalAmount??(Number(s.amount??s.charge??0)+Number(s.partsTotal||0)))+"\n\nThis will delete the service record. The customer itself will NOT be deleted.");
+    if(!ok)return;
+    del("services",id);
+  }else{
+    toast("This invoice type cannot be deleted here");return;
+  }
+  closeModal("invoiceModal");
+  currentInvoiceId=null;currentInvoiceType="";
+}
+
 async function deletePayment(saleId,index){
   const s=db.sales.find(x=>x.id===saleId);
   if(!s||!Array.isArray(s.payments)||!s.payments[index])return;
