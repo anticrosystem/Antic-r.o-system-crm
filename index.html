@@ -51,7 +51,7 @@ th{background:#f8fafc;color:#53677d}
 .empty{text-align:center;color:var(--muted);padding:25px}
 .toast{position:fixed;right:18px;bottom:18px;background:#102a43;color:#fff;padding:12px 15px;border-radius:9px;display:none;z-index:80}
 .toast.show{display:block}
-@media(max-width:900px){.sidebar{width:72px}.brand{font-size:0}.brand-logo{width:48px;height:48px;padding:2px;margin:0 auto 8px}.brand small{display:none}.nav button{font-size:0;text-align:center}.nav button:before{font-size:20px}.nav button[data-page="dashboard"]:before{content:"🏠"}.nav button[data-page="leads"]:before{content:"🎯"}.nav button[data-page="customers"]:before{content:"👥"}.nav button[data-page="sales"]:before{content:"💰"}.nav button[data-page="service"]:before{content:"🔧"}.nav button[data-page="amc"]:before{content:"🔄"}.nav button[data-page="technicians"]:before{content:"👨‍🔧"}.nav button[data-page="reports"]:before{content:"📊"}.nav button[data-page="reminders"]:before{content:"🔔"}.nav button[data-page="settings"]:before{content:"⚙️"}.main{margin-left:72px;width:calc(100% - 72px)}.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+@media(max-width:900px){.sidebar{width:72px}.brand{font-size:0}.brand-logo{width:48px;height:48px;padding:2px;margin:0 auto 8px}.brand small{display:none}.nav button{font-size:0;text-align:center}.nav button:before{font-size:20px}.nav button[data-page="dashboard"]:before{content:"🏠"}.nav button[data-page="leads"]:before{content:"🎯"}.nav button[data-page="customers"]:before{content:"👥"}.nav button[data-page="sales"]:before{content:"💰"}.nav button[data-page="service"]:before{content:"🔧"}.nav button[data-page="amc"]:before{content:"🔄"}.nav button[data-page="technicians"]:before{content:"👨‍🔧"}.nav button[data-page="reports"]:before{content:"📊"}.nav button[data-page="monthlyGrowth"]:before{content:"📈"}.nav button[data-page="reminders"]:before{content:"🔔"}.nav button[data-page="settings"]:before{content:"⚙️"}.main{margin-left:72px;width:calc(100% - 72px)}.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 @media(max-width:560px){.main{padding:12px}.modal-box .cards{grid-template-columns:repeat(2,1fr)!important}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.metric{font-size:21px}.form-grid{grid-template-columns:1fr}.top h1{font-size:20px}.btn{padding:9px 10px}}
 @media print{body>*:not(#invoiceModal):not(#printInvoiceWrap){display:none!important}#invoiceModal{display:block!important;position:static}.modal-box{box-shadow:none!important;width:100%!important;max-width:none!important}}
 
@@ -295,6 +295,7 @@ th{background:#f8fafc;color:#53677d}
     <button data-page="amc">AMC</button>
     <button data-page="technicians">Technicians</button>
     <button data-page="reports">Reports</button>
+    <button data-page="monthlyGrowth">📈 Monthly Growth</button>
     <button data-page="reminders">Reminders 🔔</button>
     <button data-page="settings">Settings</button>
   </nav>
@@ -429,6 +430,15 @@ th{background:#f8fafc;color:#53677d}
       <div class="monthly-legend"><span><i class="legend-dot sales-dot"></i>Sales Amount</span><span><i class="legend-dot service-dot"></i>Service Amount</span></div>
       <div id="monthlyGrowthChart" class="monthly-growth-chart"></div>
       <div id="monthlyGrowthTable" class="table-wrap monthly-growth-table"></div>
+    </div>
+  </section>
+
+  <section id="monthlyGrowth" class="page">
+    <div class="panel monthly-growth-panel">
+      <div class="section-title"><div><h3>📈 Monthly Sales & Service Growth</h3><div class="mini">Month-wise sales invoices, service invoices, amounts and growth compared with the previous month.</div></div></div>
+      <div class="monthly-legend"><span><i class="legend-dot sales-dot"></i>Sales Amount</span><span><i class="legend-dot service-dot"></i>Service Amount</span></div>
+      <div id="monthlyGrowthChartPage" class="monthly-growth-chart"></div>
+      <div id="monthlyGrowthTablePage" class="table-wrap monthly-growth-table"></div>
     </div>
   </section>
 
@@ -909,7 +919,7 @@ function toast(t){const x=document.getElementById("toast");if(!x)return;x.textCo
 function openModal(id){const x=document.getElementById(id);if(x)x.classList.add("show")}
 function closeModal(id){const x=document.getElementById(id);if(x)x.classList.remove("show")}
 
-const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],reports:["",""],reminders:["",""],settings:["",""]};
+const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],reports:["",""],monthlyGrowth:["","" ],reminders:["",""],settings:["",""]};
 function updateTopAction(pageName){const b=document.getElementById("topActionBtn");if(!b)return;const a=pageActions[pageName]||["",""];if(!a[0]){b.style.display="none";return}b.style.display="inline-block";b.textContent=a[0];b.setAttribute("onclick",a[1]);}
 document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
@@ -1411,7 +1421,13 @@ async function shareInvoiceWhatsApp(){
   toast(num ? "PDF Save karein. Print window band karte hi customer ka WhatsApp khulega." : "PDF Save karein. Print window band karte hi WhatsApp khulega.");
 }
 
-function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderReminders()}
+function renderMonthlyGrowthPage(){
+  const chart=document.getElementById("monthlyGrowthChartPage"),table=document.getElementById("monthlyGrowthTablePage");
+  if(!chart||!table)return;
+  const sourceChart=document.getElementById("monthlyGrowthChart"),sourceTable=document.getElementById("monthlyGrowthTable");
+  if(sourceChart&&sourceTable){chart.innerHTML=sourceChart.innerHTML;table.innerHTML=sourceTable.innerHTML;}
+}
+function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderMonthlyGrowthPage();renderReminders()}
 async function deleteSale(id){
   const s=db.sales.find(x=>x.id===id);
   if(!s)return;
