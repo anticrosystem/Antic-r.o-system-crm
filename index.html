@@ -1067,8 +1067,9 @@ function openServiceInvoice(serviceId){
   const c=db.customers.find(x=>x.id===s.customerId)||{};
   currentInvoiceType="service";currentInvoiceId=serviceId;
   currentInvoiceMobile=c.mobile||s.mobile||"";
-  let inv=String(s.serviceInvoiceNo||"").replace(/^PWS-SVC-/i,"");
-  if(!/^\d+$/.test(inv)||Number(inv)<1||Number(inv)>999999){inv=nextBillNumber();s.serviceInvoiceNo=inv;}
+  let inv=String(s.serviceInvoiceNo||"").trim();
+  if(!/^ARS\s*-\s*\d+$/.test(inv)){inv=nextServiceInvoiceNumber();s.serviceInvoiceNo=inv;}
+  else{inv="ARS - "+String(inv).replace(/^ARS\s*-\s*/i,"").padStart(3,"0");s.serviceInvoiceNo=inv;}
   const amount=Number(s.totalAmount??(Number(s.amount??s.charge??0)+Number(s.partsTotal||0)));const paid=Number(s.paid||0),pending=Math.max(0,amount-paid);
   const mode=String(s.paymentMode||s.mode||"Cash");
   const checks=["Cash","Cheque","UPI","Online Transfer","POS","Finance","EMI"].map(x=>`<span>${mode===x?"☑":"☐"} ${x}</span>`).join("");
@@ -1092,7 +1093,7 @@ function saveReviewLink(){const el=document.getElementById("reviewLink");if(!el)
 function loadReviewLink(){const el=document.getElementById("reviewLink");if(el)el.value=getReviewLink()}
 function serviceBillText(s){
   const c=db.customers.find(x=>x.id===s.customerId)||{};
-  const billNo=s.serviceInvoiceNo||("PWS-SVC-"+String(s.id).replace(/\D/g,"").slice(-6).padStart(6,"0"));
+  const billNo=s.serviceInvoiceNo||nextServiceInvoiceNumber();
   s.serviceInvoiceNo=billNo;
   const amount=Number(s.amount??s.charge??0);
   const review=getReviewLink();
@@ -1108,7 +1109,7 @@ function sendServiceBillAndReviewWhatsApp(id){
   const c=db.customers.find(x=>x.id===s.customerId)||{};
   const mobile=c.mobile||s.mobile||"";
   if(!mobile){toast("Customer mobile number not available");return}
-  s.serviceInvoiceNo=s.serviceInvoiceNo||("PWS-SVC-"+String(s.id).replace(/\D/g,"").slice(-6).padStart(6,"0"));
+  s.serviceInvoiceNo=s.serviceInvoiceNo||nextServiceInvoiceNumber();
   persist();
   wa(mobile,serviceBillText(s));
 }
@@ -1370,10 +1371,16 @@ function numberWords(n){
 }
 function formatInvoiceDate(v){const x=String(v||"");if(/^\d{4}-\d{2}-\d{2}$/.test(x)){const [y,m,d]=x.split("-");return `${d}/${m}/${y}`}return x}
 function nextBillNumber(){
-  const nums=[...db.sales,...db.amcs,...db.services].map(x=>String(x.invoiceNo||x.serviceInvoiceNo||"").replace(/^PWS(?:-AMC|-SVC)?-/i,"").trim()).map(x=>/^\d+$/.test(x)&&Number(x)>=1&&Number(x)<=999999?Number(x):0);
+  const nums=db.sales.map(x=>String(x.invoiceNo||"").replace(/^PWS-/i,"").trim()).map(x=>/^\d+$/.test(x)&&Number(x)>=1&&Number(x)<=999999?Number(x):0);
   const maxExisting=Math.max(0,...nums);
   db.invoiceCounter=Math.max(0,Number(db.invoiceCounter||0),maxExisting)+1;
   return String(db.invoiceCounter).padStart(3,"0");
+}
+function nextServiceInvoiceNumber(){
+  const nums=db.services.map(x=>String(x.serviceInvoiceNo||"").replace(/^ARS\s*-\s*/i,"").replace(/^PWS-SVC-/i,"").trim()).map(x=>/^\d+$/.test(x)&&Number(x)>=1&&Number(x)<=999999?Number(x):0);
+  const maxExisting=Math.max(0,...nums);
+  db.serviceInvoiceCounter=Math.max(0,Number(db.serviceInvoiceCounter||0),maxExisting)+1;
+  return "ARS - "+String(db.serviceInvoiceCounter).padStart(3,"0");
 }
 function openInvoice(saleId){
   const s=db.sales.find(x=>x.id===saleId);if(!s){toast("Sale not found");return}
