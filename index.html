@@ -51,7 +51,7 @@ th{background:#f8fafc;color:#53677d}
 .empty{text-align:center;color:var(--muted);padding:25px}
 .toast{position:fixed;right:18px;bottom:18px;background:#102a43;color:#fff;padding:12px 15px;border-radius:9px;display:none;z-index:80}
 .toast.show{display:block}
-@media(max-width:900px){.sidebar{width:72px}.brand{font-size:0}.brand-logo{width:48px;height:48px;padding:2px;margin:0 auto 8px}.brand small{display:none}.nav button{font-size:0;text-align:center}.nav button:before{font-size:20px}.nav button[data-page="dashboard"]:before{content:"🏠"}.nav button[data-page="leads"]:before{content:"🎯"}.nav button[data-page="customers"]:before{content:"👥"}.nav button[data-page="sales"]:before{content:"💰"}.nav button[data-page="service"]:before{content:"🔧"}.nav button[data-page="amc"]:before{content:"🔄"}.nav button[data-page="technicians"]:before{content:"👨‍🔧"}.nav button[data-page="reports"]:before{content:"📊"}.nav button[data-page="monthlyGrowth"]:before{content:"📈"}.nav button[data-page="reminders"]:before{content:"🔔"}.nav button[data-page="settings"]:before{content:"⚙️"}.main{margin-left:72px;width:calc(100% - 72px)}.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+@media(max-width:900px){.sidebar{width:72px}.brand{font-size:0}.brand-logo{width:48px;height:48px;padding:2px;margin:0 auto 8px}.brand small{display:none}.nav button{font-size:0;text-align:center}.nav button:before{font-size:20px}.nav button[data-page="dashboard"]:before{content:"🏠"}.nav button[data-page="leads"]:before{content:"🎯"}.nav button[data-page="customers"]:before{content:"👥"}.nav button[data-page="sales"]:before{content:"💰"}.nav button[data-page="emiTracking"]:before{content:"💳"}.nav button[data-page="service"]:before{content:"🔧"}.nav button[data-page="amc"]:before{content:"🔄"}.nav button[data-page="technicians"]:before{content:"👨‍🔧"}.nav button[data-page="reports"]:before{content:"📊"}.nav button[data-page="monthlyGrowth"]:before{content:"📈"}.nav button[data-page="reminders"]:before{content:"🔔"}.nav button[data-page="settings"]:before{content:"⚙️"}.main{margin-left:72px;width:calc(100% - 72px)}.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 @media(max-width:560px){.main{padding:12px}.modal-box .cards{grid-template-columns:repeat(2,1fr)!important}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.metric{font-size:21px}.form-grid{grid-template-columns:1fr}.top h1{font-size:20px}.btn{padding:9px 10px}}
 @media print{body>*:not(#invoiceModal):not(#printInvoiceWrap){display:none!important}#invoiceModal{display:block!important;position:static}.modal-box{box-shadow:none!important;width:100%!important;max-width:none!important}}
 
@@ -294,6 +294,7 @@ th{background:#f8fafc;color:#53677d}
     <button data-page="leads">Leads</button>
     <button data-page="customers">Customers</button>
     <button data-page="sales">Sales & Payments</button>
+    <button data-page="emiTracking">💳 EMI Tracking</button>
     <button data-page="service">Service</button>
     <button data-page="amc">AMC</button>
     <button data-page="technicians">Technicians</button>
@@ -315,6 +316,7 @@ th{background:#f8fafc;color:#53677d}
     <button data-page="leads">Leads</button>
     <button data-page="customers">Customers</button>
     <button data-page="sales">Sales & Payments</button>
+    <button data-page="emiTracking">💳 EMI Tracking</button>
     <button data-page="service">Service</button>
     <button data-page="amc">AMC</button>
     <button data-page="technicians">Technicians</button>
@@ -341,6 +343,14 @@ th{background:#f8fafc;color:#53677d}
       <div class="card"><div class="label">Follow-ups Today</div><div class="metric" id="mFollow">0</div></div>
       <div class="card"><div class="label">Technicians</div><div class="metric" id="mTech">0</div></div><div class="card"><div class="label">Due Follow-ups</div><div class="metric" id="mDue">0</div></div><div class="card"><div class="label">AMC Next 30 Days</div><div class="metric" id="mAMC30">0</div></div>
     </div>
+    <div class="panel" id="dashboardEMITracking" style="background:#f5fbff;border-color:#c7dced">
+      <div class="toolbar" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><h3 style="margin:0">💳 EMI Tracking</h3><div class="mini">હપ્તાવાળા R.O. customer અને paymentની સ્થિતિ</div></div>
+        <button class="btn primary" onclick="goToPage('emiTracking')">View EMI Tracking</button>
+      </div>
+      <div id="dashboardEMISummary" class="cards" style="grid-template-columns:repeat(4,1fr);margin:0"></div>
+    </div>
+
     <div class="panel" style="background:#eef6ff;border-color:#cfe3ff">
       <h3>Antic R.O System Customer Lifecycle</h3>
       <p style="margin:0;color:#52677d">🎯 Lead → 👥 Customer → 💰 Sale → 🛠️ Installation → 🔧 Service → 🔄 AMC → 🔔 Renewal</p>
@@ -392,6 +402,17 @@ th{background:#f8fafc;color:#53677d}
     <div class="panel">
       <div class="toolbar"><button class="btn primary" onclick="openModal('saleModal')">＋ New Sale</button></div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Total</th><th>Paid</th><th>Pending</th><th>Status</th><th>Actions</th></tr></thead><tbody id="salesTable"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="emiTracking" class="page">
+    <div class="panel">
+      <div class="toolbar" style="justify-content:space-between;align-items:center">
+        <div><h3 style="margin:0">💳 EMI Tracking</h3><div class="mini">હપ્તાવાળા customer, deposit, due date અને payment history</div></div>
+      </div>
+      <div id="emiTrackingSummary" class="cards" style="margin-bottom:14px"></div>
+      <div class="toolbar"><input class="search" id="emiSearch" placeholder="Search customer / mobile..." oninput="renderEMITracking()"></div>
+      <div class="table-wrap"><table><thead><tr><th>Customer</th><th>R.O. Price</th><th>Deposit</th><th>હપ્તા</th><th>Paid</th><th>Pending</th><th>Next Due</th><th>Actions</th></tr></thead><tbody id="emiTrackingTable"></tbody></table></div>
     </div>
   </section>
 
@@ -924,7 +945,7 @@ function toast(t){const x=document.getElementById("toast");if(!x)return;x.textCo
 function openModal(id){const x=document.getElementById(id);if(x)x.classList.add("show")}
 function closeModal(id){const x=document.getElementById(id);if(x)x.classList.remove("show")}
 
-const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],reports:["",""],monthlyGrowth:["","" ],reminders:["",""],settings:["",""]};
+const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],emiTracking:["",""],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],reports:["",""],monthlyGrowth:["","" ],reminders:["",""],settings:["",""]};
 function updateTopAction(pageName){const b=document.getElementById("topActionBtn");if(!b)return;const a=pageActions[pageName]||["",""];if(!a[0]){b.style.display="none";return}b.style.display="inline-block";b.textContent=a[0];b.setAttribute("onclick",a[1]);}
 document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
@@ -1260,7 +1281,33 @@ function renderDashboardDueUpcoming(){
   }).join("");
 }
 
-function renderDashboard(){mLeads.textContent=db.leads.length;mCustomers.textContent=db.customers.length;mSales.textContent=money(db.sales.reduce((a,x)=>a+Number(x.total||0),0));mPending.textContent=money(db.sales.reduce((a,x)=>a+Number(x.pending||0),0));mService.textContent=db.services.filter(x=>!["Completed","Cancelled"].includes(x.status)).length;const amcExpiring=getAMCExpiryRecords().filter(x=>{const d=daysFromToday(x.end);return d!==null&&d>=0&&d<=30});mAMC.textContent=amcExpiring.length;mFollow.textContent=db.leads.filter(x=>x.follow===today&&x.status!=="Lost").length;mTech.textContent=db.technicians.length;mDue.textContent=db.services.filter(x=>x.follow&&x.follow<=today&&x.status!=="Completed").length+db.customers.filter(x=>x.nextService&&x.nextService<=today).length;mAMC30.textContent=amcExpiring.length;const f=db.leads.filter(x=>x.follow===today).slice(0,8);todayFollow.innerHTML=f.length?f.map(x=>`<div class="lead"><b>${esc(x.name)}</b><div class="mini">${esc(x.product)} · ${statusBadge(x.status)}</div><div class="toolbar" style="margin:7px 0 0"><button class="btn" onclick="leadCall(${x.id})">📞 Call</button><button class="btn" onclick="leadWhatsApp(${x.id})">💬 WhatsApp</button></div></div>`).join(""):"<div class='empty'>No follow-ups today</div>";const s=db.services.slice(0,6);recentService.innerHTML=s.length?s.map(x=>`<div class="lead"><b>${esc(x.customer||"Customer")}</b><div class="mini">${esc(x.problem||"General Service")} · ${statusBadge(x.status)}</div></div>`).join(""):"<div class='empty'>No service requests</div>";renderDashboardDueUpcoming()}
+function getEMITrackingRows(){
+  updateSalesBalances();
+  return db.sales.filter(s=>s.paymentPlan==="installment" && Number(s.installmentCount||0)>0).map(s=>{
+    const schedule=getInstallmentSchedule(s);
+    const deposit=Number(s.deposit||0);
+    const installmentPaid=Math.max(0,Number(s.paid||0)-deposit);
+    let running=0,next=null,overdue=0,paidCount=0;
+    schedule.forEach(x=>{const before=running;running+=Number(x.amount||0);const paid=installmentPaid+0.001>=running;const partial=!paid&&installmentPaid>before+0.001;if(paid)paidCount++;else if(!partial){if(x.date<today)overdue++;if(!next)next=x;}});
+    return {...s,schedule,deposit,installmentPaid,paidCount,overdue,nextDue:next?.date||"",nextDueAmount:next?.amount||0};
+  });
+}
+function renderEMITracking(){
+  const rows=getEMITrackingRows();
+  const q=String(document.getElementById("emiSearch")?.value||"").trim().toLowerCase();
+  const filtered=rows.filter(s=>!q||String(s.customer||"").toLowerCase().includes(q)||String(s.mobile||"").toLowerCase().includes(q));
+  const totalPending=rows.reduce((a,s)=>a+Number(s.pending||0),0);
+  const overdue=rows.reduce((a,s)=>a+Number(s.overdue||0),0);
+  const due=rows.filter(s=>s.nextDue).length;
+  const summary=document.getElementById("emiTrackingSummary");
+  if(summary)summary.innerHTML=`<div class="card"><div class="label">EMI Customers</div><div class="metric">${rows.length}</div></div><div class="card"><div class="label">Paid Installments</div><div class="metric">${rows.reduce((a,s)=>a+s.paidCount,0)}</div></div><div class="card"><div class="label">Upcoming Due</div><div class="metric">${due}</div></div><div class="card"><div class="label">Pending Amount</div><div class="metric">${money(totalPending)}</div></div>`;
+  const dsum=document.getElementById("dashboardEMISummary");
+  if(dsum)dsum.innerHTML=`<div class="card"><div class="label">EMI Customers</div><div class="metric">${rows.length}</div></div><div class="card"><div class="label">Paid Installments</div><div class="metric">${rows.reduce((a,s)=>a+s.paidCount,0)}</div></div><div class="card"><div class="label">Overdue</div><div class="metric">${overdue}</div></div><div class="card"><div class="label">Pending Amount</div><div class="metric">${money(totalPending)}</div></div>`;
+  const box=document.getElementById("emiTrackingTable");
+  if(!box)return;
+  box.innerHTML=filtered.length?filtered.map(s=>`<tr><td><b>${esc(s.customer||"Customer")}</b><div class="mini">${esc(s.mobile||"")}</div></td><td>${money(s.total)}</td><td>${money(s.deposit)}</td><td>${s.paidCount}/${s.installmentCount}</td><td>${money(s.paid)}</td><td>${money(s.pending)}</td><td>${s.nextDue?`${esc(s.nextDue)}<div class="mini">${money(s.nextDueAmount)}</div>`:"—"}</td><td><button class="btn green" onclick="openReceivePayment(${s.id})">💵 Payment / History</button></td></tr>`).join(""):`<tr><td colspan="8" class="empty">No EMI customers found.</td></tr>`;
+}
+function renderDashboard(){renderEMITracking();mLeads.textContent=db.leads.length;mCustomers.textContent=db.customers.length;mSales.textContent=money(db.sales.reduce((a,x)=>a+Number(x.total||0),0));mPending.textContent=money(db.sales.reduce((a,x)=>a+Number(x.pending||0),0));mService.textContent=db.services.filter(x=>!["Completed","Cancelled"].includes(x.status)).length;const amcExpiring=getAMCExpiryRecords().filter(x=>{const d=daysFromToday(x.end);return d!==null&&d>=0&&d<=30});mAMC.textContent=amcExpiring.length;mFollow.textContent=db.leads.filter(x=>x.follow===today&&x.status!=="Lost").length;mTech.textContent=db.technicians.length;mDue.textContent=db.services.filter(x=>x.follow&&x.follow<=today&&x.status!=="Completed").length+db.customers.filter(x=>x.nextService&&x.nextService<=today).length;mAMC30.textContent=amcExpiring.length;const f=db.leads.filter(x=>x.follow===today).slice(0,8);todayFollow.innerHTML=f.length?f.map(x=>`<div class="lead"><b>${esc(x.name)}</b><div class="mini">${esc(x.product)} · ${statusBadge(x.status)}</div><div class="toolbar" style="margin:7px 0 0"><button class="btn" onclick="leadCall(${x.id})">📞 Call</button><button class="btn" onclick="leadWhatsApp(${x.id})">💬 WhatsApp</button></div></div>`).join(""):"<div class='empty'>No follow-ups today</div>";const s=db.services.slice(0,6);recentService.innerHTML=s.length?s.map(x=>`<div class="lead"><b>${esc(x.customer||"Customer")}</b><div class="mini">${esc(x.problem||"General Service")} · ${statusBadge(x.status)}</div></div>`).join(""):"<div class='empty'>No service requests</div>";renderDashboardDueUpcoming()}
 function leadCall(id){const x=db.leads.find(x=>x.id===id);if(x)callNo(x.mobile)}
 function leadWhatsApp(id){const x=db.leads.find(x=>x.id===id);if(x)wa(x.mobile,"Hello "+x.name+", this is Antic R.O System. How can we help you?")}
 async function deleteLead(id){
@@ -1437,7 +1484,7 @@ function renderMonthlyGrowthPage(){
   const sourceChart=document.getElementById("monthlyGrowthChart"),sourceTable=document.getElementById("monthlyGrowthTable");
   if(sourceChart&&sourceTable){chart.innerHTML=sourceChart.innerHTML;table.innerHTML=sourceTable.innerHTML;}
 }
-function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderMonthlyGrowthPage();renderReminders()}
+function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderMonthlyGrowthPage();renderReminders();renderEMITracking()}
 async function deleteSale(id){
   const saleId=Number(id);
   const s=db.sales.find(x=>Number(x.id)===saleId);
