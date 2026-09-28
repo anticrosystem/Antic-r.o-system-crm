@@ -716,8 +716,24 @@ th{background:#f8fafc;color:#53677d}
 <script>
 const KEY="purixaCRM_v1";
 const today=new Date().toISOString().slice(0,10);
-const emptyDB=()=>({leads:[],customers:[],sales:[],services:[],amcs:[],technicians:[],invoiceCounter:701});
+const emptyDB=()=>({leads:[],customers:[],sales:[],services:[],amcs:[],technicians:[],invoiceCounter:0,serviceInvoiceCounter:0,billNumberFormatVersion:0});
 let db=loadDB();
+
+function renumberAllBills(target){
+  const sales=[...(target.sales||[])].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||Number(a.id||0)-Number(b.id||0));
+  sales.forEach((x,i)=>{x.invoiceNo=String(i+1).padStart(3,"0")});
+  const services=[...(target.services||[])].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||Number(a.id||0)-Number(b.id||0));
+  services.forEach((x,i)=>{x.serviceInvoiceNo="ARS - "+String(i+1).padStart(3,"0")});
+  target.invoiceCounter=sales.length;
+  target.serviceInvoiceCounter=services.length;
+  target.billNumberFormatVersion=2;
+  return target;
+}
+
+if(Number(db.billNumberFormatVersion||0)<2){
+  renumberAllBills(db);
+  localStorage.setItem(KEY,JSON.stringify(db));
+}
 let editingCustomerId=null, editingServiceId=null, currentInvoiceMobile="", currentInvoiceType="", currentInvoiceId=null, currentAMCVisitId=null, editingAMCVisitIndex=null, currentAMCInvoiceMobile="";
 
 function loadDB(){
@@ -725,7 +741,9 @@ function loadDB(){
     const raw=JSON.parse(localStorage.getItem(KEY)||"null")||emptyDB();
     const d=Object.assign(emptyDB(),raw);
     ["leads","customers","sales","services","amcs","technicians"].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
-    d.invoiceCounter=Number(d.invoiceCounter||701);
+    d.invoiceCounter=Number(d.invoiceCounter||0);
+    d.serviceInvoiceCounter=Number(d.serviceInvoiceCounter||0);
+    d.billNumberFormatVersion=Number(d.billNumberFormatVersion||0);
     d.customers.forEach(c=>{
       c.notes=c.notes||"";
       const lastCompleted=d.services.filter(s=>Number(s.customerId)===Number(c.id)&&s.status==="Completed"&&s.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
@@ -873,6 +891,7 @@ async function loadCloudData(){
     const normalized=await loadNormalizedCollections();
     if(normalized){
       db=normalized;
+      if(Number(db.billNumberFormatVersion||0)<2){renumberAllBills(db);await syncCloudData(true);}
       db.customers.forEach(c=>{
         c.notes=c.notes||"";
         const lastCompleted=db.services.filter(s=>Number(s.customerId)===Number(c.id)&&s.status==="Completed"&&s.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
@@ -898,6 +917,7 @@ async function loadCloudData(){
     const snap=await ref.get();
     if(snap.exists && snap.data().data){
       db=Object.assign(emptyDB(),snap.data().data);
+      if(Number(db.billNumberFormatVersion||0)<2)renumberAllBills(db);
       db.services=db.services.map(s=>normalizeService(s,db));
       db.amcs=(db.amcs||[]).map(a=>{a.visitsTotal=Number(a.visitsTotal??a.visits??0);if(!Array.isArray(a.visitHistory))a.visitHistory=[];if(!a.nextService)a.nextService=addMonths(a.start||today,3);return a});
       syncCustomerAMCFields(db);
@@ -965,7 +985,7 @@ document.getElementById("saleModal")?.addEventListener("click",()=>{const d=docu
 document.getElementById("saleTotal")?.addEventListener("input",updateInstallmentPreview);document.getElementById("salePaid")?.addEventListener("input",updateInstallmentPreview);document.getElementById("saleInstallments")?.addEventListener("input",updateInstallmentPreview);document.getElementById("saleDate")?.addEventListener("change",()=>{const d=document.getElementById("saleFirstDueDate");if(document.getElementById("salePaymentPlan")?.value==="installment"&&d)d.value=addMonths(document.getElementById("saleDate").value||today,1);updateInstallmentPreview()});
 function toggleInstallmentFields(){const plan=document.getElementById("salePaymentPlan")?.value==="installment";const n=document.getElementById("saleInstallments"),d=document.getElementById("saleFirstDueDate"),p=document.getElementById("installmentPlanPreview");if(n)n.disabled=!plan;if(d)d.disabled=!plan;if(p)p.style.display=plan?"block":"none";if(plan&&d&&!d.value)d.value=addMonths(String(document.getElementById("saleDate")?.value||today),1);updateInstallmentPreview()}
 function updateInstallmentPreview(){const plan=document.getElementById("salePaymentPlan")?.value==="installment",p=document.getElementById("installmentPlanPreview");if(!p)return;if(!plan){p.innerHTML="";return}const total=Number(document.getElementById("saleTotal")?.value||0),deposit=Number(document.getElementById("salePaid")?.value||0),n=Math.max(1,Number(document.getElementById("saleInstallments")?.value||1)),balance=Math.max(0,total-deposit),each=n?balance/n:0;p.innerHTML=`<div class="card" style="margin:0;background:#f5fbff"><b>💳 હપ્તા પ્લાન</b><div class="mini" style="margin-top:5px">Deposit: ${money(deposit)} • બાકી: ${money(balance)} • ${n} હપ્તા • લગભગ ${money(each)} પ્રતિ હપ્તો</div></div>`}
-function saveSale(e){e.preventDefault();const saleDate=String(document.getElementById("saleDate")?.value||today);const plan=document.getElementById("salePaymentPlan")?.value==="installment";let total=+saleTotal.value||0,paid=+salePaid.value||0;const installmentCount=plan?Math.max(1,Number(document.getElementById("saleInstallments")?.value||1)):0;const firstDueDate=plan?String(document.getElementById("saleFirstDueDate")?.value||addMonths(saleDate,1)):"";if(total<=0){toast("Enter total amount");return}if(paid>total){toast("Paid / deposit amount cannot exceed total");return}if(plan&&paid>=total){toast("Installment sale needs some pending balance after deposit");return}const name=String(saleCustomer.value||"").trim();const mobile=String(document.getElementById("saleMobile")?.value||"").trim();const address=String(document.getElementById("saleAddress")?.value||"").trim();if(!name){toast("Enter customer name");return}let c=null;if(mobile)c=db.customers.find(x=>String(x.mobile||"").replace(/\D/g,"")===mobile.replace(/\D/g,""));if(!c)c=db.customers.find(x=>String(x.name||"").trim().toLowerCase()===name.toLowerCase());if(!c){c={id:Date.now()+1,name,mobile,address,product:saleProduct.value.trim(),purchase:saleDate,install:"",amc:"",installStatus:"Pending",nextService:addMonths(saleDate,3),notes:""};db.customers.unshift(c)}else{if(mobile&&String(c.mobile||"").replace(/\D/g,"")!==mobile.replace(/\D/g,""))c.mobile=mobile;if(address)c.address=address;if(!c.name)c.name=name}const qty=Math.max(1,+document.getElementById("saleQty")?.value||1);const saleId=Date.now();const payments=paid>0?[{id:saleId+1,date:saleDate,amount:paid,mode:saleMode.value,note:plan?"Deposit / Down Payment":"Initial payment",kind:plan?"deposit":"payment"}]:[];const sale={id:saleId,date:saleDate,customerId:c.id,customer:c.name,mobile:c.mobile||"",address:c.address||"",product:saleProduct.value.trim(),qty,warranty:document.getElementById("saleWarranty")?.value.trim()||"",gstin:document.getElementById("saleGSTIN")?.value.trim()||"",total,amount:total,paid,pending:Math.max(0,total-paid),mode:saleMode.value,payments,paymentStatus:salePaymentStatus({total,paid})};if(plan){sale.paymentPlan="installment";sale.deposit=paid;sale.installmentCount=installmentCount;sale.firstDueDate=firstDueDate;sale.installmentAmount=Math.round((Math.max(0,total-paid)/installmentCount)*100)/100}else{sale.paymentPlan="full";sale.deposit=paid;sale.installmentCount=0;sale.firstDueDate="";sale.installmentAmount=0}db.sales.unshift(sale);persist();fillSaleCustomerList();e.target.reset();setDefaultSaleDate();toggleInstallmentFields();closeModal("saleModal");toast(plan?"Installment sale saved — payment schedule created":"Sale saved — customer linked automatically") }
+function saveSale(e){e.preventDefault();const saleDate=String(document.getElementById("saleDate")?.value||today);const plan=document.getElementById("salePaymentPlan")?.value==="installment";let total=+saleTotal.value||0,paid=+salePaid.value||0;const installmentCount=plan?Math.max(1,Number(document.getElementById("saleInstallments")?.value||1)):0;const firstDueDate=plan?String(document.getElementById("saleFirstDueDate")?.value||addMonths(saleDate,1)):"";if(total<=0){toast("Enter total amount");return}if(paid>total){toast("Paid / deposit amount cannot exceed total");return}if(plan&&paid>=total){toast("Installment sale needs some pending balance after deposit");return}const name=String(saleCustomer.value||"").trim();const mobile=String(document.getElementById("saleMobile")?.value||"").trim();const address=String(document.getElementById("saleAddress")?.value||"").trim();if(!name){toast("Enter customer name");return}let c=null;if(mobile)c=db.customers.find(x=>String(x.mobile||"").replace(/\D/g,"")===mobile.replace(/\D/g,""));if(!c)c=db.customers.find(x=>String(x.name||"").trim().toLowerCase()===name.toLowerCase());if(!c){c={id:Date.now()+1,name,mobile,address,product:saleProduct.value.trim(),purchase:saleDate,install:"",amc:"",installStatus:"Pending",nextService:addMonths(saleDate,3),notes:""};db.customers.unshift(c)}else{if(mobile&&String(c.mobile||"").replace(/\D/g,"")!==mobile.replace(/\D/g,""))c.mobile=mobile;if(address)c.address=address;if(!c.name)c.name=name}const qty=Math.max(1,+document.getElementById("saleQty")?.value||1);const saleId=Date.now();const payments=paid>0?[{id:saleId+1,date:saleDate,amount:paid,mode:saleMode.value,note:plan?"Deposit / Down Payment":"Initial payment",kind:plan?"deposit":"payment"}]:[];const sale={id:saleId,date:saleDate,customerId:c.id,customer:c.name,mobile:c.mobile||"",address:c.address||"",product:saleProduct.value.trim(),qty,invoiceNo:nextBillNumber(),warranty:document.getElementById("saleWarranty")?.value.trim()||"",gstin:document.getElementById("saleGSTIN")?.value.trim()||"",total,amount:total,paid,pending:Math.max(0,total-paid),mode:saleMode.value,payments,paymentStatus:salePaymentStatus({total,paid})};if(plan){sale.paymentPlan="installment";sale.deposit=paid;sale.installmentCount=installmentCount;sale.firstDueDate=firstDueDate;sale.installmentAmount=Math.round((Math.max(0,total-paid)/installmentCount)*100)/100}else{sale.paymentPlan="full";sale.deposit=paid;sale.installmentCount=0;sale.firstDueDate="";sale.installmentAmount=0}db.sales.unshift(sale);persist();fillSaleCustomerList();e.target.reset();setDefaultSaleDate();toggleInstallmentFields();closeModal("saleModal");toast(plan?"Installment sale saved — payment schedule created":"Sale saved — customer linked automatically") }
 
 function fillServiceCustomerOptions(selectedId=""){
   const s=document.getElementById("svcCustomer");if(!s)return;
@@ -1056,7 +1076,7 @@ function openServiceModal(customerId=""){
 }
 function openCustomerService(id){const c=db.customers.find(x=>x.id===Number(id));if(!c)return;openServiceModal(c.id)}
 function saveService(e){e.preventDefault();const cid=Number(svcCustomer.value);const c=db.customers.find(x=>x.id===cid);if(!c){toast("Please select a customer");return}const tid=Number(svcTech.value)||null;const tech=db.technicians.find(x=>x.id===tid);const serviceDate=svcDate.value||today;const parts=servicePartsFromForm();const partsTotal=parts.reduce((sum,x)=>sum+x.amount,0);const serviceCharge=Math.max(0,+svcAmount.value||0);const grandTotal=serviceCharge+partsTotal;const data={customerId:cid,customer:c.name,mobile:c.mobile||"",problem:svcProblem.value||"General Service",tech:tech?.name||"",technicianId:tid,status:svcStatus.value,amount:serviceCharge,charge:serviceCharge,totalAmount:grandTotal,parts,partsTotal,date:serviceDate,follow:svcFollow.value,notes:svcNotes.value.trim()};let savedId=null,sendCompleted=false;
-  if(editingServiceId){const s=db.services.find(x=>x.id===editingServiceId);if(s){const wasCompleted=s.status==="Completed";Object.assign(s,data);savedId=s.id;sendCompleted=!wasCompleted&&data.status==="Completed"}}else{savedId=Date.now();db.services.unshift({id:savedId,...data});sendCompleted=data.status==="Completed"}
+  if(editingServiceId){const s=db.services.find(x=>x.id===editingServiceId);if(s){const wasCompleted=s.status==="Completed";Object.assign(s,data);savedId=s.id;sendCompleted=!wasCompleted&&data.status==="Completed"}}else{savedId=Date.now();db.services.unshift({id:savedId,...data,serviceInvoiceNo:nextServiceInvoiceNumber()});sendCompleted=data.status==="Completed"}
   if(data.status==="Completed"){c.nextService=addMonths(serviceDate,3)}
   persist();e.target.reset();closeModal("serviceModal");toast(editingServiceId?(data.status==="Completed"?"Service updated — next service set after 3 months":"Service updated"):"Service saved");editingServiceId=null;
   if(sendCompleted){setTimeout(()=>sendServiceBillAndReviewWhatsApp(savedId),450)}
