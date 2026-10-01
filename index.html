@@ -912,6 +912,7 @@ function getFirebaseConfig(){
   }
 }
 function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(x)x.textContent=text;const i=document.getElementById("cloudSettingsInfo");if(i)i.textContent=text+(firebaseAuth?.currentUser?" · "+firebaseAuth.currentUser.email:"")}
+let crmLoginGranted=false;
 function initFirebase(){
   cloudReady=false;
   const cfg=getFirebaseConfig();
@@ -927,18 +928,20 @@ function initFirebase(){
     // state can be missed and the login overlay may remain hidden.
     setCloudStatus("Firebase ready · Sign in to sync");
     firebaseAuth.onAuthStateChanged(async user=>{
-      if(user){
-        // Only the configured Owner/Admin account may enter at this stage.
-        const ownerEmail="anticrosystem@gmail.com";
-        if(String(user.email||"").trim().toLowerCase()!==ownerEmail){
-          await firebaseAuth.signOut().catch(()=>{});
-          document.getElementById("authMsg").textContent="This account is not authorized as Owner/Admin.";
-          showLoginOverlay();
-          return;
-        }
-        setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();
+      const ownerEmail="anticrosystem@gmail.com";
+      // A Firebase session by itself NEVER unlocks the CRM.
+      // The current page must have completed cloudLogin() successfully.
+      if(user && crmLoginGranted && String(user.email||"").trim().toLowerCase()===ownerEmail){
+        setCloudStatus("Connected · "+user.email);
+        if(hideLoginOverlay()) await loadCloudData();
+        return;
       }
-      else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
+      if(user){
+        crmLoginGranted=false;
+        await firebaseAuth.signOut().catch(()=>{});
+      }
+      setCloudStatus("Firebase ready · Not signed in");
+      showLoginOverlay();
     });
     // Clear any remembered Firebase session after the listener is ready, so
     // every fresh CRM open requires the Owner/Admin credentials again.
@@ -1054,7 +1057,7 @@ function openCloudSetup(){document.getElementById("firebaseConfigSettings").valu
 function saveFirebaseConfig(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigSettings").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));closeModal("cloudSetupModal");if(initFirebase())showLoginOverlay()}catch(e){toast("Invalid Firebase config")}}
 function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getElementById("firebaseConfigInput").value);if(!cfg.apiKey||!cfg.projectId)throw Error();localStorage.setItem(FIREBASE_KEY,JSON.stringify(cfg));document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM.";initFirebase()}catch(e){document.getElementById("authMsg").textContent="Invalid Firebase config."}}
 function showLoginOverlay(){document.body.classList.remove("crm-unlocked");document.body.classList.add("crm-locked");const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
-function hideLoginOverlay(){const user=firebaseAuth?.currentUser;const ownerEmail="anticrosystem@gmail.com";if(!user||String(user.email||"").trim().toLowerCase()!==ownerEmail){showLoginOverlay();return false}document.getElementById("authOverlay")?.classList.remove("show");document.body.classList.remove("crm-locked");document.body.classList.add("crm-unlocked");return true}
+function hideLoginOverlay(){const user=firebaseAuth?.currentUser;const ownerEmail="anticrosystem@gmail.com";if(!crmLoginGranted||!user||String(user.email||"").trim().toLowerCase()!==ownerEmail){showLoginOverlay();return false}document.getElementById("authOverlay")?.classList.remove("show");document.body.classList.remove("crm-locked");document.body.classList.add("crm-unlocked");return true}
 function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
 async function cloudLogin(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
@@ -1065,6 +1068,8 @@ async function cloudLogin(){
   try{
     document.getElementById("authMsg").textContent="Signing in...";
     await firebaseAuth.signInWithEmailAndPassword(email,pass);
+    crmLoginGranted=true;
+    hideLoginOverlay();
   }catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}
 }
 async function cloudCreateAccount(){
@@ -1072,9 +1077,9 @@ async function cloudCreateAccount(){
   const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
   if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password first.";return}
   if(pass.length<6){document.getElementById("authMsg").textContent="Password must be at least 6 characters.";return}
-  try{document.getElementById("authMsg").textContent="Creating account...";await firebaseAuth.createUserWithEmailAndPassword(email,pass);hideLoginOverlay();toast("Admin account created & logged in")}catch(e){document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
+  try{document.getElementById("authMsg").textContent="Creating account...";await firebaseAuth.createUserWithEmailAndPassword(email,pass);crmLoginGranted=true;hideLoginOverlay();toast("Admin account created & logged in")}catch(e){document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
 }
-async function cloudLogout(){if(firebaseAuth?.currentUser){await firebaseAuth.signOut();showLoginOverlay()}}
+async function cloudLogout(){crmLoginGranted=false;if(firebaseAuth?.currentUser){await firebaseAuth.signOut()}showLoginOverlay()}
 function cloudSyncNow(){if(!cloudReady||!firebaseAuth?.currentUser){toast("Please login to cloud first");return}syncCloudData(false)}
 function money(n){return "₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2})}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
