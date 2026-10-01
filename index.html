@@ -320,8 +320,8 @@ th{background:#0d344c!important;color:#9fe8ff!important;border-bottom:1px solid 
       <button class="btn primary" style="width:100%" onclick="saveFirebaseConfigFromAuth()">☁️ Save Cloud Setup</button>
     </div>
     <div id="loginBox" style="display:none">
-      <input id="loginEmail" type="email" placeholder="Admin email">
-      <input id="loginPassword" type="password" placeholder="Password">
+      <input id="loginEmail" type="email" value="anticrosystem@gmail.com" placeholder="Admin email" autocomplete="username">
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
       <button class="btn primary" style="width:100%" onclick="cloudLogin()">🔐 Login & Sync</button>
       <button class="btn" style="width:100%;margin-top:7px" onclick="cloudCreateAccount()">➕ Create Admin Account</button>
     </div>
@@ -341,6 +341,7 @@ th{background:#0d344c!important;color:#9fe8ff!important;border-bottom:1px solid 
     <button data-page="service">Service</button>
     <button data-page="amc">AMC</button>
     <button data-page="technicians">Technicians</button>
+    <button data-page="technicianWork">🔧 Technician Work</button>
     <button data-page="reports">Reports</button>
     <button data-page="monthlyGrowth">📈 Monthly Growth</button>
     <button data-page="reminders">Reminders 🔔</button>
@@ -364,6 +365,7 @@ th{background:#0d344c!important;color:#9fe8ff!important;border-bottom:1px solid 
     <button data-page="service">Service</button>
     <button data-page="amc">AMC</button>
     <button data-page="technicians">Technicians</button>
+    <button data-page="technicianWork">🔧 Technician Work</button>
     <button data-page="reports">Reports</button>
     <button data-page="reminders">Reminders 🔔</button>
     <button data-page="settings">Settings</button>
@@ -493,6 +495,27 @@ th{background:#0d344c!important;color:#9fe8ff!important;border-bottom:1px solid 
     <div class="panel">
       <div class="toolbar"><button class="btn primary" onclick="openModal('techModal')">＋ Add Technician</button></div>
       <div class="table-wrap"><table><thead><tr><th>Name</th><th>Mobile</th><th>Area</th><th>Status</th><th>Jobs</th></tr></thead><tbody id="techTable"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="technicianWork" class="page">
+    <div class="panel">
+      <div class="toolbar" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><h3 style="margin:0">🔧 Technician Work</h3><div class="mini">Technician-wise, date-wise work report from the technician work link.</div></div>
+        <button class="btn primary" onclick="copyAllTechnicianLinks()">🔗 Copy Technician Links</button>
+      </div>
+      <div class="toolbar" style="gap:8px;flex-wrap:wrap">
+        <input class="search" id="techWorkSearch" placeholder="Search technician / customer / work..." oninput="renderTechnicianWork()">
+        <label class="mini" style="display:flex;align-items:center;gap:6px">From <input id="techWorkFrom" type="date" onchange="renderTechnicianWork()"></label>
+        <label class="mini" style="display:flex;align-items:center;gap:6px">To <input id="techWorkTo" type="date" onchange="renderTechnicianWork()"></label>
+        <select id="techWorkTech" onchange="renderTechnicianWork()"><option value="">All Technicians</option></select>
+      </div>
+      <div id="technicianWorkSummary" class="cards" style="margin-bottom:14px"></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Technician</th><th>Customer</th><th>Mobile</th><th>Work Done</th><th>Parts / Material</th><th>Charge</th><th>Status</th><th>Note</th></tr></thead><tbody id="technicianWorkTable"></tbody></table></div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><h3>🔗 Technician Links</h3><div class="mini">આ link technicianના મોબાઇલમાં ખોલી શકાય છે.</div></div>
+      <div id="technicianLinkList"></div>
     </div>
   </section>
 
@@ -777,7 +800,7 @@ th{background:#0d344c!important;color:#9fe8ff!important;border-bottom:1px solid 
 <script>
 const KEY="purixaCRM_v1";
 const today=new Date().toISOString().slice(0,10);
-const emptyDB=()=>({leads:[],customers:[],sales:[],services:[],amcs:[],technicians:[],inventory:[],inventoryMovements:[],invoiceCounter:0,serviceInvoiceCounter:0,billNumberFormatVersion:0});
+const emptyDB=()=>({leads:[],customers:[],sales:[],services:[],amcs:[],technicians:[],technicianWork:[],inventory:[],inventoryMovements:[],invoiceCounter:0,serviceInvoiceCounter:0,billNumberFormatVersion:0});
 let db=loadDB();
 
 function renumberAllBills(target){
@@ -801,7 +824,7 @@ function loadDB(){
   try{
     const raw=JSON.parse(localStorage.getItem(KEY)||"null")||emptyDB();
     const d=Object.assign(emptyDB(),raw);
-    ["leads","customers","sales","services","amcs","technicians","inventory","inventoryMovements"].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
+    ["leads","customers","sales","services","amcs","technicians","technicianWork","inventory","inventoryMovements"].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
     d.invoiceCounter=Number(d.invoiceCounter||0);
     d.serviceInvoiceCounter=Number(d.serviceInvoiceCounter||0);
     d.billNumberFormatVersion=Number(d.billNumberFormatVersion||0);
@@ -889,8 +912,8 @@ function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(
 function initFirebase(){
   cloudReady=false;
   const cfg=getFirebaseConfig();
-  if(!cfg||!cfg.apiKey||!cfg.projectId){setCloudStatus("Firebase not configured · Local mode");return false}
-  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){setCloudStatus("Firebase SDK failed to load · Check internet/CDN");console.error("Firebase compat SDK unavailable");return false}
+  if(!cfg||!cfg.apiKey||!cfg.projectId){setCloudStatus("Firebase not configured · Login required");showLoginOverlay();return false}
+  if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore){setCloudStatus("Firebase SDK failed to load · Check internet/CDN");showLoginOverlay();console.error("Firebase compat SDK unavailable");return false}
   try{
     firebaseApp=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
     firebaseAuth=firebase.auth();
@@ -934,7 +957,7 @@ async function commitFirestoreOps(ops){
 }
 async function syncNormalizedCollections(){
   const base=await cloudUserBase();
-  const keys=["leads","customers","sales","services","amcs","technicians","inventory","inventoryMovements"];
+  const keys=["leads","customers","sales","services","amcs","technicians","technicianWork","inventory","inventoryMovements"];
   for(const key of keys){
     const col=base.collection(key);
     const snap=await col.get();
@@ -948,7 +971,7 @@ async function syncNormalizedCollections(){
 }
 async function loadNormalizedCollections(){
   const base=await cloudUserBase();
-  const keys=["leads","customers","sales","services","amcs","technicians","inventory","inventoryMovements"];
+  const keys=["leads","customers","sales","services","amcs","technicians","technicianWork","inventory","inventoryMovements"];
   const result=emptyDB();
   let count=0;
   for(const key of keys){
@@ -985,6 +1008,8 @@ async function loadCloudData(){
         }
       });
       localStorage.setItem(KEY,JSON.stringify(db));
+      await loadTechnicianPublicWork();
+      await syncTechnicianPublicProfiles();
       renderAll();
       if(firebaseAuth.currentUser) syncNormalizedCollections().catch(console.error);
       toast("☁️ Cloud data loaded");
@@ -999,6 +1024,8 @@ async function loadCloudData(){
       db.amcs=(db.amcs||[]).map(a=>{a.visitsTotal=Number(a.visitsTotal??a.visits??0);if(!Array.isArray(a.visitHistory))a.visitHistory=[];if(!a.nextService)a.nextService=addMonths(a.start||today,3);return a});
       syncCustomerAMCFields(db);
       localStorage.setItem(KEY,JSON.stringify(db));
+      await loadTechnicianPublicWork();
+      await syncTechnicianPublicProfiles();
       renderAll();
       await syncNormalizedCollections();
       toast("☁️ Cloud data migrated");
@@ -1052,7 +1079,7 @@ function toast(t){const x=document.getElementById("toast");if(!x)return;x.textCo
 function openModal(id){const x=document.getElementById(id);if(x)x.classList.add("show")}
 function closeModal(id){const x=document.getElementById(id);if(x)x.classList.remove("show")}
 
-const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],emiTracking:["",""],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],reports:["",""],monthlyGrowth:["","" ],inventory:["＋ Add Item","openInventoryItemModal()"],reminders:["",""],settings:["",""]};
+const pageActions={dashboard:["＋ New Lead","openModal('leadModal')"],leads:["＋ Add Lead","openModal('leadModal')"],customers:["＋ Add Customer","openModal('customerModal')"],sales:["＋ New Sale","openModal('saleModal')"],emiTracking:["",""],service:["＋ New Service","openServiceModal()"],amc:["＋ Add AMC","openAMCModal()"],technicians:["＋ Add Technician","openModal('techModal')"],technicianWork:["",""],reports:["",""],monthlyGrowth:["","" ],inventory:["＋ Add Item","openInventoryItemModal()"],reminders:["",""],settings:["",""]};
 function updateTopAction(pageName){const b=document.getElementById("topActionBtn");if(!b)return;const a=pageActions[pageName]||["",""];if(!a[0]){b.style.display="none";return}b.style.display="inline-block";b.textContent=a[0];b.setAttribute("onclick",a[1]);}
 document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
@@ -1342,7 +1369,7 @@ function showAMCHistory(id){
   }
   body.innerHTML=html; openModal("amcHistoryModal");
 }
-function saveTech(e){e.preventDefault();db.technicians.unshift({id:Date.now(),name:techName.value.trim(),mobile:techMobile.value.trim(),area:techArea.value.trim(),status:techStatus.value});persist();e.target.reset();closeModal("techModal");toast("Technician saved")}
+function saveTech(e){e.preventDefault();const tech={id:Date.now(),name:techName.value.trim(),mobile:techMobile.value.trim(),area:techArea.value.trim(),status:techStatus.value};db.technicians.unshift(tech);persist();if(firestore&&firebaseAuth?.currentUser){firestore.collection("technicianProfilesPublic").doc(String(tech.id)).set({id:String(tech.id),name:tech.name,mobile:tech.mobile,area:tech.area,status:tech.status,ownerUid:firebaseAuth.currentUser.uid},{merge:true}).catch(err=>console.error("Technician public profile sync failed",err));}e.target.reset();closeModal("techModal");toast("Technician saved") }
 function callNo(n){if(n)location.href="tel:"+String(n).replace(/\s/g,"")}
 function wa(n,msg="Hello, Antic R.O System"){const num=String(n||"").replace(/\D/g,"");if(!num)return toast("Mobile number not available");window.open("https://wa.me/91"+num+"?text="+encodeURIComponent(msg),"_blank")}
 function statusBadge(s){let c=["Completed","Won","Available","Paid","Active"].includes(s)?"green":["Open","New","Assigned","Interested","Quotation","Expiring Soon"].includes(s)?"orange":["Lost","Cancelled","Off Duty","Expired"].includes(s)?"red":"";return `<span class="badge ${c}">${esc(s)}</span>`}
@@ -1525,7 +1552,7 @@ function renderAMC(){
     return '<tr><td><b>'+esc(x.customer||"-")+'</b><div class="mini">'+esc(x.mobile||"")+'</div></td><td>'+esc(x.start||"-")+'</td><td>'+esc(x.end||"-")+'<div class="mini">'+endInfo+'</div></td><td>'+money(x.amount)+'</td><td><span class="amc-visits">'+(total===0?'Unlimited':used+'/'+total)+'</span> <span class="mini">'+(total===0?'visits': '('+left+' left)')+'</span><br><button class="btn" onclick="openAMCVisit('+x.id+')">＋ Visit</button> <button class="btn" onclick="showAMCHistory('+x.id+')">▣ History</button></td><td>'+esc(x.nextService||"-")+'<div class="mini">'+nextInfo+'</div></td><td>'+statusBadge(label)+'</td><td><button class="btn primary" onclick="openAMCInvoice('+x.id+')">🧾 Invoice</button> <button class="btn" onclick="openAMCRenewal('+x.id+')">🔄 Renew</button> <button class="btn" onclick="editAMC('+x.id+')">✏️ Edit</button> <button class="btn red" onclick="del(\'amcs\','+x.id+')">Delete</button></td></tr>';
   }).join("");
 }
-function renderTech(){techTable.innerHTML=db.technicians.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.mobile)} <button class="btn" onclick="callNo('${String(x.mobile||"").replace(/'/g,"\\'")}')">📞</button></td><td>${esc(x.area)}</td><td>${statusBadge(x.status)}</td><td>${db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length}</td><td><button class="btn red" onclick="del('technicians',${x.id})">Delete</button></td></tr>`).join("")||`<tr><td colspan="6" class="empty">No technicians</td></tr>`}
+function renderTech(){techTable.innerHTML=db.technicians.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.mobile)} <button class="btn" onclick="callNo('${String(x.mobile||"").replace(/'/g,"\\'")}')">📞</button></td><td>${esc(x.area)}</td><td>${statusBadge(x.status)}</td><td>${db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length}</td><td><button class="btn" onclick="copyTechnicianLink(${x.id})">🔗 Link</button> <button class="btn red" onclick="del('technicians',${x.id})">Delete</button></td></tr>`).join("")||`<tr><td colspan="6" class="empty">No technicians</td></tr>`}
 function renderReports(){const total=db.leads.length,won=db.leads.filter(x=>x.status==="Won").length;rConversion.textContent=(total?Math.round(won/total*100):0)+"%";rCollected.textContent=money(db.sales.reduce((a,x)=>a+Number(x.paid||0),0));rService.textContent=money(db.services.filter(x=>x.status==="Completed").reduce((a,x)=>a+Number(x.amount??x.charge??0),0));rAMC.textContent=money(db.amcs.reduce((a,x)=>a+Number(x.amount||0),0));reportSummary.innerHTML=`<p><b>Leads:</b> ${total}</p><p><b>Won:</b> ${won}</p><p><b>Customers:</b> ${db.customers.length}</p><p><b>Total Sales:</b> ${money(db.sales.reduce((a,x)=>a+Number(x.total||0),0))}</p><p><b>Pending:</b> ${money(db.sales.reduce((a,x)=>a+Number(x.pending||0),0))}</p><p><b>Services:</b> ${db.services.length}</p><p><b>AMC:</b> ${db.amcs.length}</p>`;renderMonthlyGrowthChart()}
 function renderMonthlyGrowthChart(){const chart=document.getElementById("monthlyGrowthChart"),table=document.getElementById("monthlyGrowthTable");if(!chart||!table)return;const rows={};const add=(date,sales,service,count)=>{const m=String(date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(m))return;if(!rows[m])rows[m]={sales:0,service:0,count:0};rows[m].sales+=Number(sales||0);rows[m].service+=Number(service||0);rows[m].count+=Number(count||0)};db.sales.forEach(s=>add(s.date,s.total,0,1));db.services.forEach(s=>add(s.date,0,Number(s.amount??s.charge??0),1));const keys=Object.keys(rows).sort();if(!keys.length){chart.innerHTML='<div class="empty" style="width:100%">Sales or service invoice data will appear here month-wise.</div>';table.innerHTML="";return}const max=Math.max(...keys.map(k=>rows[k].sales+rows[k].service),1);const fmtMonth=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-IN",{month:"short",year:"numeric"})};let previous=null;chart.innerHTML=keys.map(k=>{const r=rows[k],totalAmount=r.sales+r.service,growth=previous===null?null:(previous===0?(totalAmount>0?100:0):((totalAmount-previous)/previous)*100);previous=totalAmount;const salesH=Math.max(2,Math.round((r.sales/max)*190)),serviceH=Math.max(2,Math.round((r.service/max)*190));const growthText=growth===null?"—":`${growth>=0?"↑":"↓"} ${Math.abs(growth).toFixed(1)}%`;const growthCls=growth===null?"growth-flat":growth>0?"growth-up":growth<0?"growth-down":"growth-flat";return `<div class="month-column"><div class="month-growth ${growthCls}">${growthText}</div><div class="month-bars" title="${esc(fmtMonth(k))} • Sales ${esc(money(r.sales))} • Service ${esc(money(r.service))}"><div class="month-bar sales" style="height:${salesH}px"></div><div class="month-bar service" style="height:${serviceH}px"></div></div><div class="month-total">${esc(money(totalAmount))}</div><div class="month-label">${esc(fmtMonth(k))}</div></div>`}).join("");previous=null;let html='<table><thead><tr><th>Month</th><th>Sales Invoices</th><th>Sales Amount</th><th>Service Invoices</th><th>Service Amount</th><th>Total Amount</th><th>Growth</th></tr></thead><tbody>';keys.forEach(k=>{const r=rows[k],totalAmount=r.sales+r.service,growth=previous===null?null:(previous===0?(totalAmount>0?100:0):((totalAmount-previous)/previous)*100);previous=totalAmount;const salesCount=db.sales.filter(s=>String(s.date||"").slice(0,7)===k).length,serviceCount=db.services.filter(s=>String(s.date||"").slice(0,7)===k).length;const growthText=growth===null?"—":`${growth>=0?"↑":"↓"} ${Math.abs(growth).toFixed(1)}%`,growthCls=growth===null?"growth-flat":growth>0?"growth-up":growth<0?"growth-down":"growth-flat";html+=`<tr><td><b>${esc(fmtMonth(k))}</b></td><td>${salesCount}</td><td>${money(r.sales)}</td><td>${serviceCount}</td><td>${money(r.service)}</td><td><b>${money(totalAmount)}</b></td><td class="${growthCls}">${growthText}</td></tr>`});html+='</tbody></table>';table.innerHTML=html}
 
@@ -1628,7 +1655,9 @@ function printInvoiceForPDF(){
       #printInvoiceWrap .invoice{display:block!important;visibility:visible!important}
       .invoice .bill-table tr.item-spacer{height:105mm!important}
     }
-  </style></head><body><div id="printInvoiceWrap">${invoice.outerHTML}</div>
+  
+.tech-link-text{word-break:break-all;margin-top:6px;padding:7px;border:1px solid rgba(14,165,233,.25);border-radius:7px;background:#061b2b;color:#9bdcf5}.tech-portal{min-height:100vh;background:#061522;padding:18px}.tech-portal-card{max-width:760px;margin:20px auto;background:#082238;border:1px solid #0ea5e9;border-radius:18px;padding:18px;box-shadow:0 10px 35px rgba(0,0,0,.25);color:#fff}.tech-portal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.tech-portal-title{font-size:24px;font-weight:800}.tech-portal-tech{padding:9px 12px;border:1px solid #0ea5e9;border-radius:10px;background:#061b2b}.tech-portal-success{margin-top:10px;color:#67e8f9;font-weight:700}
+</style></head><body><div id="printInvoiceWrap">${invoice.outerHTML}</div>
   <script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},500)});<\/script></body></html>`);
   w.document.close();
   toast("Print window open ho raha hai — Destination me Save as PDF select karein.");
@@ -1667,7 +1696,116 @@ function renderMonthlyGrowthPage(){
   const sourceChart=document.getElementById("monthlyGrowthChart"),sourceTable=document.getElementById("monthlyGrowthTable");
   if(sourceChart&&sourceTable){chart.innerHTML=sourceChart.innerHTML;table.innerHTML=sourceTable.innerHTML;}
 }
-function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderReports();renderMonthlyGrowthPage();renderReminders();renderEMITracking();renderInventory()}
+
+
+async function syncTechnicianPublicProfiles(){
+  if(!firestore||!firebaseAuth?.currentUser)return;
+  try{
+    const col=firestore.collection("technicianProfilesPublic");
+    for(const t of (db.technicians||[])){
+      await col.doc(String(t.id)).set({id:String(t.id),name:t.name||"",mobile:t.mobile||"",area:t.area||"",status:t.status||"",ownerUid:firebaseAuth.currentUser.uid},{merge:true});
+    }
+  }catch(e){console.error("Technician public profile sync failed",e)}
+}
+async function loadTechnicianPublicWork(){
+  if(!firestore||!firebaseAuth?.currentUser)return;
+  try{
+    const snap=await firestore.collection("technicianWorkPublic").where("ownerUid","==",firebaseAuth.currentUser.uid).get();
+    db.technicianWork=snap.docs.map(d=>d.data()).filter(w=>w&&w.id);
+    localStorage.setItem(KEY,JSON.stringify(db));
+  }catch(e){console.error("Technician work load failed",e)}
+}
+function technicianPortalInfo(){
+  const q=new URLSearchParams(location.search);
+  return q.get("technicianPortal")==="1"?{ownerUid:q.get("ownerUid")||"",technicianId:q.get("technicianId")||""}:null;
+}
+function technicianPortalLink(tech){
+  if(!tech)return "";
+  const ownerUid=firebaseAuth?.currentUser?.uid||"";
+  if(!ownerUid)return "";
+  const u=new URL(location.href);u.search="";u.hash="";
+  u.searchParams.set("technicianPortal","1");u.searchParams.set("ownerUid",ownerUid);u.searchParams.set("technicianId",String(tech.id));
+  return u.toString();
+}
+function copyTextSafe(text){
+  if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text);
+  const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();return Promise.resolve();
+}
+function copyTechnicianLink(id){
+  const t=db.technicians.find(x=>String(x.id)===String(id));if(!t){toast("Technician not found");return}
+  const link=technicianPortalLink(t);if(!link){toast("Please login as Owner first");return}
+  copyTextSafe(link).then(()=>toast("✅ Technician link copied"));
+}
+function openTechnicianLink(id){
+  const t=db.technicians.find(x=>String(x.id)===String(id));if(!t)return;
+  const link=technicianPortalLink(t);if(link)window.open(link,"_blank");else toast("Please login as Owner first");
+}
+function copyAllTechnicianLinks(){
+  const links=db.technicians.map(t=>`${t.name}: ${technicianPortalLink(t)}`).filter(x=>!x.endsWith(": "));
+  if(!links.length){toast("Please login as Owner and add technicians first");return}
+  copyTextSafe(links.join("\n\n")).then(()=>toast("✅ All technician links copied"));
+}
+function renderTechnicianLinks(){
+  const box=document.getElementById("technicianLinkList");if(!box)return;
+  if(!db.technicians.length){box.innerHTML='<div class="empty">No technicians yet. Add a technician first.</div>';return}
+  box.innerHTML=db.technicians.map(t=>{const link=technicianPortalLink(t);return `<div class="lead" style="margin-bottom:8px"><b>👨‍🔧 ${esc(t.name)}</b><div class="mini">${esc(t.mobile||"")} · ${esc(t.status||"")}</div><div class="toolbar" style="margin-top:7px"><button class="btn primary" onclick="openTechnicianLink(${JSON.stringify(String(t.id))})">🔗 Open</button><button class="btn" onclick="copyTechnicianLink(${JSON.stringify(String(t.id))})">📋 Copy Link</button></div>${link?`<div class="mini tech-link-text">${esc(link)}</div>`:""}</div>`}).join("");
+}
+function renderTechnicianWork(){
+  const q=String(document.getElementById("techWorkSearch")?.value||"").trim().toLowerCase();
+  const from=document.getElementById("techWorkFrom")?.value||"",to=document.getElementById("techWorkTo")?.value||"",tid=document.getElementById("techWorkTech")?.value||"";
+  const sel=document.getElementById("techWorkTech");
+  if(sel){const cur=sel.value;sel.innerHTML='<option value="">All Technicians</option>'+db.technicians.map(t=>`<option value="${esc(String(t.id))}">${esc(t.name)}</option>`).join("");if([...sel.options].some(o=>o.value===cur))sel.value=cur;}
+  const arr=(db.technicianWork||[]).filter(w=>{
+    const text=[w.technicianName,w.customerName,w.mobile,w.workDone,w.parts,w.note,w.address].join(" ").toLowerCase();
+    return (!q||text.includes(q))&&(!from||String(w.date||"")>=from)&&(!to||String(w.date||"")<=to)&&(!tid||String(w.technicianId)===String(tid));
+  }).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))||Number(b.createdAt||0)-Number(a.createdAt||0));
+  const totalCharge=arr.reduce((a,w)=>a+Number(w.serviceCharge||0),0);
+  const sum=document.getElementById("technicianWorkSummary");if(sum)sum.innerHTML=`<div class="card"><div class="label">🔧 Total Work</div><div class="metric">${arr.length}</div></div><div class="card"><div class="label">👨‍🔧 Technicians</div><div class="metric">${new Set(arr.map(w=>String(w.technicianId||w.technicianName||""))).size}</div></div><div class="card"><div class="label">💰 Service Charge</div><div class="metric">${money(totalCharge)}</div></div>`;
+  const box=document.getElementById("technicianWorkTable");if(!box)return;
+  box.innerHTML=arr.length?arr.map(w=>`<tr><td>${esc(w.date||"-")}</td><td><b>${esc(w.technicianName||"-")}</b></td><td><b>${esc(w.customerName||"-")}</b><div class="mini">${esc(w.address||"")}</div></td><td>${esc(w.mobile||"-")}</td><td>${esc(w.workDone||"-")}</td><td>${esc(w.parts||"-")}</td><td>${money(w.serviceCharge||0)}</td><td>${statusBadge(w.status||"Completed")}</td><td>${esc(w.note||"-")}</td></tr>`).join(""):`<tr><td colspan="9" class="empty">No technician work found.</td></tr>`;
+  renderTechnicianLinks();
+}
+async function submitTechnicianPortalWork(e){
+  e.preventDefault();
+  const info=technicianPortalInfo();if(!info?.ownerUid||!info.technicianId){toast("Invalid technician link");return}
+  const t=window._portalTechnician;
+  if(!t){toast("Technician not found");return}
+  const work={id:Date.now()+Math.floor(Math.random()*1000),ownerUid:info.ownerUid,technicianId:String(t.id),technicianName:t.name||"",date:document.getElementById("portalWorkDate").value||today,customerName:document.getElementById("portalCustomerName").value.trim(),mobile:document.getElementById("portalCustomerMobile").value.trim(),address:document.getElementById("portalCustomerAddress").value.trim(),workDone:document.getElementById("portalWorkDone").value.trim(),parts:document.getElementById("portalParts").value.trim(),serviceCharge:Number(document.getElementById("portalCharge").value||0),status:document.getElementById("portalStatus").value,note:document.getElementById("portalNote").value.trim(),createdAt:Date.now()};
+  if(!work.customerName||!work.workDone){toast("Customer name and work done are required");return}
+  try{
+    if(!window.firebase||!firebase.firestore)throw Error("Firebase unavailable");
+    const auth=firebase.auth();if(!auth.currentUser)await auth.signInAnonymously();
+    await firebase.firestore().collection("technicianWorkPublic").doc(String(work.id)).set(work);
+    e.target.reset();document.getElementById("portalWorkDate").value=today;document.getElementById("portalSuccess").textContent="✅ Work submitted successfully";setTimeout(()=>{document.getElementById("portalSuccess").textContent=""},3000);
+  }catch(err){console.error(err);document.getElementById("portalSuccess").textContent="❌ Work could not be submitted. Firebase rules need technicianWorkPublic create permission.";}
+}
+async function initTechnicianPortal(){
+  const info=technicianPortalInfo();if(!info)return false;
+  document.getElementById("authOverlay")?.classList.remove("show");
+  document.querySelector(".app")?.setAttribute("style","display:none!important");
+  let root=document.getElementById("technicianPortalRoot");
+  if(!root){root=document.createElement("div");root.id="technicianPortalRoot";document.body.appendChild(root)}
+  let t=null;
+  try{
+    if(window.firebase?.auth){const auth=firebase.auth();if(!auth.currentUser)await auth.signInAnonymously();}
+    if(info.ownerUid&&firebase.firestore){
+      const snap=await firebase.firestore().collection("technicianWorkPublic").where("ownerUid","==",info.ownerUid).limit(1).get().catch(()=>null);
+      // Technician identity is carried by the signed link; no customer/business data is exposed here.
+    }
+    const cached=db.technicians.find(x=>String(x.id)===String(info.technicianId));
+    t=cached||null;
+  }catch(err){console.error(err)}
+  // Technician name is embedded into the link by the owner only through the id;
+  // fetch the public profile collection if available.
+  if(!t){
+    try{const snap=await firebase.firestore().collection("technicianProfilesPublic").doc(String(info.technicianId)).get();if(snap.exists)t=snap.data();}catch(err){console.error(err)}}
+  if(!t){root.innerHTML='<div class="tech-portal"><div class="tech-portal-card"><h2>🔧 Technician Work</h2><p>Technician link is invalid or expired.</p></div></div>';return true}
+  window._portalTechnician=t;
+  root.innerHTML=`<div class="tech-portal"><div class="tech-portal-card"><div class="tech-portal-head"><div><div class="tech-portal-title">🔧 Technician Work</div><div class="mini">Antic R.O System</div></div><div class="tech-portal-tech">👨‍🔧 ${esc(t.name)}</div></div><form onsubmit="submitTechnicianPortalWork(event)"><div class="form-grid"><div class="field"><label>Date *</label><input id="portalWorkDate" type="date" value="${today}" required></div><div class="field"><label>Status</label><select id="portalStatus"><option>Completed</option><option>In Progress</option><option>Pending</option><option>Hold</option><option>Cancelled</option></select></div><div class="field"><label>Customer Name *</label><input id="portalCustomerName" required></div><div class="field"><label>Customer Mobile</label><input id="portalCustomerMobile" type="tel"></div><div class="field full"><label>Address</label><textarea id="portalCustomerAddress" rows="2"></textarea></div><div class="field full"><label>Work Done *</label><textarea id="portalWorkDone" rows="4" required placeholder="What work did you complete?"></textarea></div><div class="field full"><label>Parts / Material Used</label><textarea id="portalParts" rows="3"></textarea></div><div class="field"><label>Service Charge</label><input id="portalCharge" type="number" min="0" value="0"></div><div class="field full"><label>Technician Note</label><textarea id="portalNote" rows="3"></textarea></div></div><div class="actions"><button class="btn primary" style="width:100%">✅ Submit Work</button></div><div id="portalSuccess" class="mini tech-portal-success"></div></form></div></div>`;
+  return true;
+}
+
+function renderAll(){renderDashboard();renderLeads();renderCustomers();renderSales();renderServices();renderAMC();renderTech();renderTechnicianWork();renderReports();renderMonthlyGrowthPage();renderReminders();renderEMITracking();renderInventory()}
 async function deleteSale(id){
   const saleId=Number(id);
   const s=db.sales.find(x=>Number(x.id)===saleId);
@@ -1791,7 +1929,7 @@ async function safeStartFresh(){
     if(!confirm("A backup file has been started for download.\n\nIf you have any REAL customer/business data in this CRM, press Cancel and keep the backup.\n\nIf the data is only FAKE/TEST data, press OK to permanently delete it from Firebase and this browser.")) return;
     if(firestore && firebaseAuth?.currentUser){
       const base=await cloudUserBase();
-      const keys=["leads","customers","sales","services","amcs","technicians","inventory","inventoryMovements"];
+      const keys=["leads","customers","sales","services","amcs","technicians","technicianWork","inventory","inventoryMovements"];
 
       // Delete documents one-by-one instead of Firestore batch.commit().
       // Firebase Diagnostic confirmed direct DELETE permission, so this avoids
@@ -1899,7 +2037,7 @@ mobileBottomNav();
 updateTopAction("dashboard");
 renderAll();
 fillSaleCustomerList();
-initFirebase();
+if(technicianPortalInfo()) initTechnicianPortal(); else { showLoginOverlay(); initFirebase(); }
 loadReviewLink();
 setInterval(renderReminders,60000);
 </script>
