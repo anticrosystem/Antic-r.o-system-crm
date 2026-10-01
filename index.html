@@ -897,9 +897,8 @@ function initFirebase(){
     firestore=firebase.firestore();
     cloudReady=true;
     // Force a fresh login every time this CRM page/app is opened.
-    // Firebase normally remembers the previous session, so explicitly sign out
-    // before attaching the auth-state handler. This does not affect CRM data.
-    firebaseAuth.signOut().catch(()=>{});
+    // Attach the auth-state listener BEFORE signing out; otherwise the null
+    // state can be missed and the login overlay may remain hidden.
     setCloudStatus("Firebase ready · Sign in to sync");
     firebaseAuth.onAuthStateChanged(async user=>{
       if(user){
@@ -915,6 +914,9 @@ function initFirebase(){
       }
       else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
     });
+    // Clear any remembered Firebase session after the listener is ready, so
+    // every fresh CRM open requires the Owner/Admin credentials again.
+    if(firebaseAuth.currentUser) firebaseAuth.signOut().catch(()=>{});
     return true;
   }catch(e){cloudReady=false;firebaseApp=null;firebaseAuth=null;firestore=null;setCloudStatus("Firebase init error · "+(e.code||e.message));console.error("Firebase init failed",e);return false}
 }
