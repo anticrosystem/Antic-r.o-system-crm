@@ -1092,7 +1092,7 @@ async function cloudLogin(){
   try{
     document.getElementById("authMsg").textContent="Signing in...";
     crmLoginInProgress=true;
-    await firebaseAuth.signInWithEmailAndPassword(email,pass);
+    await firebaseAuth.signInWithEmailAndPassword(loginId,pass);
     const user=firebaseAuth.currentUser;
     if(!user || String(user.email||"").trim().toLowerCase()!==ownerEmail) throw new Error("Owner login verification failed.");
     crmLoginGranted=true;
