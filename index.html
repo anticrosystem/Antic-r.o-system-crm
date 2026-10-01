@@ -903,7 +903,7 @@ function initFirebase(){
     firebaseAuth.onAuthStateChanged(async user=>{
       if(user){
         // Only the configured Owner/Admin account may enter at this stage.
-        const ownerEmail="anticrosysytem@gmail.com";
+        const ownerEmail="anticrosystem@gmail.com";
         if(String(user.email||"").trim().toLowerCase()!==ownerEmail){
           await firebaseAuth.signOut().catch(()=>{});
           document.getElementById("authMsg").textContent="This account is not authorized as Owner/Admin.";
@@ -1029,7 +1029,7 @@ function continueLocalMode(){document.getElementById("authMsg").textContent="Fir
 async function cloudLogin(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
   const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
-  const ownerEmail="anticrosysytem@gmail.com";
+  const ownerEmail="anticrosystem@gmail.com";
   if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}
   if(email.toLowerCase()!==ownerEmail){document.getElementById("authMsg").textContent="Owner/Admin login required.";return}
   try{
