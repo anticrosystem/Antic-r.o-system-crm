@@ -896,9 +896,23 @@ function initFirebase(){
     firebaseAuth=firebase.auth();
     firestore=firebase.firestore();
     cloudReady=true;
+    // Force a fresh login every time this CRM page/app is opened.
+    // Firebase normally remembers the previous session, so explicitly sign out
+    // before attaching the auth-state handler. This does not affect CRM data.
+    firebaseAuth.signOut().catch(()=>{});
     setCloudStatus("Firebase ready · Sign in to sync");
     firebaseAuth.onAuthStateChanged(async user=>{
-      if(user){setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();}
+      if(user){
+        // Only the configured Owner/Admin account may enter at this stage.
+        const ownerEmail="anticrosysytem@gmail.com";
+        if(String(user.email||"").trim().toLowerCase()!==ownerEmail){
+          await firebaseAuth.signOut().catch(()=>{});
+          document.getElementById("authMsg").textContent="This account is not authorized as Owner/Admin.";
+          showLoginOverlay();
+          return;
+        }
+        setCloudStatus("Connected · "+user.email);hideLoginOverlay();await loadCloudData();
+      }
       else{setCloudStatus("Firebase ready · Not signed in");showLoginOverlay();}
     });
     return true;
@@ -1010,7 +1024,17 @@ function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getEleme
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
 function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
 function continueLocalMode(){document.getElementById("authMsg").textContent="Firebase Email/Password login is required to access this CRM.";}
-async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
+async function cloudLogin(){
+  if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
+  const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
+  const ownerEmail="anticrosysytem@gmail.com";
+  if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}
+  if(email.toLowerCase()!==ownerEmail){document.getElementById("authMsg").textContent="Owner/Admin login required.";return}
+  try{
+    document.getElementById("authMsg").textContent="Signing in...";
+    await firebaseAuth.signInWithEmailAndPassword(email,pass);
+  }catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}
+}
 async function cloudCreateAccount(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
   const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
