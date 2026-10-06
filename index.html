@@ -1153,7 +1153,13 @@ function openEditSale(id){
   document.getElementById("saleCustomer").value=s.customer||db.customers.find(x=>Number(x.id)===Number(s.customerId))?.name||"";
   document.getElementById("saleMobile").value=s.mobile||db.customers.find(x=>Number(x.id)===Number(s.customerId))?.mobile||"";
   document.getElementById("saleAddress").value=s.address||db.customers.find(x=>Number(x.id)===Number(s.customerId))?.address||"";
-  document.getElementById("saleDate").value=s.date||today;
+  const saleDateEl=document.getElementById("saleDate");
+  if(saleDateEl){
+    saleDateEl.value=s.date||today;
+    saleDateEl.disabled=false;
+    saleDateEl.readOnly=false;
+    saleDateEl.removeAttribute("readonly");
+  }
   document.getElementById("saleProduct").value=s.product||"";
   document.getElementById("saleTotal").value=Number(s.grossTotal??s.total??0);
   document.getElementById("saleExchangeDiscount").value=Number(s.exchangeDiscount||0);
@@ -1192,7 +1198,8 @@ function saveSale(e){
     let c=db.customers.find(x=>Number(x.id)===Number(oldCustomerId));
     if(!c){c={id:oldCustomerId||Date.now(),name,mobile,address,product:document.getElementById("saleProduct")?.value.trim()||"",purchase:document.getElementById("saleDate")?.value||today,install:"",amc:"",installStatus:"Pending",nextService:addMonths(document.getElementById("saleDate")?.value||today,3),notes:""};db.customers.unshift(c)}
     c.name=name;c.mobile=mobile;c.address=address;
-    s.customerId=c.id;s.customer=name;s.mobile=mobile;s.address=address;s.date=String(document.getElementById("saleDate")?.value||s.date||today);s.product=document.getElementById("saleProduct")?.value.trim()||"";s.qty=Math.max(1,Number(document.getElementById("saleQty")?.value||s.qty||1));s.warranty=document.getElementById("saleWarranty")?.value.trim()||"";s.gstin=document.getElementById("saleGSTIN")?.value.trim()||"";
+    const editedSaleDate=String(document.getElementById("saleDate")?.value||s.date||today);
+    s.customerId=c.id;s.customer=name;s.mobile=mobile;s.address=address;s.date=editedSaleDate;s.product=document.getElementById("saleProduct")?.value.trim()||"";s.qty=Math.max(1,Number(document.getElementById("saleQty")?.value||s.qty||1));s.warranty=document.getElementById("saleWarranty")?.value.trim()||"";s.gstin=document.getElementById("saleGSTIN")?.value.trim()||"";
     persist();fillSaleCustomerList();e.target.reset();resetSaleEditMode();setDefaultSaleDate();toggleInstallmentFields();closeModal("saleModal");toast("✅ Sales invoice updated") ;return;
   }
   resetSaleEditMode();
