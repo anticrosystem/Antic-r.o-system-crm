@@ -3077,30 +3077,31 @@ async function shareInvoiceWhatsApp(){
 function filterRefTable(tbodyId,q){const el=document.getElementById(tbodyId);if(!el)return;const needle=String(q||"").toLowerCase();[...el.querySelectorAll("tr")].forEach(tr=>{tr.style.display=!needle||tr.innerText.toLowerCase().includes(needle)?"":"none"})}
 function renderAll(){renderDashboard();renderTodaysWork();renderLeads();renderCustomers();renderQuotations();renderSales();renderServices();renderAMC();renderTech();renderInventory();renderExpenses();renderReports();renderReminders()}
 async function deleteSale(id){
-  const s=db.sales.find(x=>x.id===id);
-  if(!s)return;
-  const customerName=s.customer||db.customers.find(c=>c.id===s.customerId)?.name||"Customer";
-  const ok=confirm("Delete this sale permanently?\n\nCustomer: "+customerName+"\nProduct: "+(s.product||"-")+"\nTotal: "+money(s.total||0)+"\n\nThis also removes all payment entries attached to this sale. The customer itself will NOT be deleted.");
+  const sale=db.sales.find(x=>String(x.id)===String(id));
+  if(!sale)return;
+  const customerName=sale.customer||db.customers.find(c=>String(c.id)===String(sale.customerId))?.name||"Customer";
+  const ok=confirm("Delete this Sales Invoice permanently?\n\nCustomer: "+customerName+"\nInvoice: "+(sale.invoiceNo||"-")+"\nProduct: "+(sale.product||"-")+"\nTotal: "+money(sale.total||0)+"\n\nThe customer will NOT be deleted.");
   if(!ok)return;
   if(cloudReady&&firebaseAuth?.currentUser){
     try{
       const base=await cloudUserBase();
-      await base.collection("sales").doc(String(id)).delete().catch(e=>{if(e?.code!=="not-found")throw e;});
+      const ref=base.collection("sales").doc(String(sale.id));
+      await ref.delete().catch(e=>{if(e?.code!=="not-found")throw e;});
+      const verify=await ref.get();
+      if(verify.exists)throw new Error("Firebase sale still exists after delete");
     }catch(e){
-      console.error(e);
-      toast("⚠️ Sale was NOT deleted. Firebase permission/error — your data is safe.");
+      console.error("Sales delete failed:",e);
+      toast("⚠️ Invoice delete failed. Firebase permission/error — data was not changed.");
       return;
     }
   }
-  db.sales=db.sales.filter(x=>x.id!==id);
+  db.sales=db.sales.filter(x=>String(x.id)!==String(id));
   localStorage.setItem(KEY,JSON.stringify(db));
   renderAll();
   if(cloudReady&&firebaseAuth?.currentUser){
-    const success=await syncCloudData(true);
-    toast(success?"✅ Sale and payment history deleted from Cloud":"⚠️ Sale deleted, but Cloud verification failed — check Firebase permissions");
-  }else{
-    toast("Sale and its payment history deleted");
-  }
+    try{await syncCloudData(true);toast("✅ Sales Invoice deleted successfully");}
+    catch(e){console.error(e);toast("⚠️ Invoice deleted locally; cloud sync needs checking.");}
+  }else{toast("✅ Sales Invoice deleted successfully");}
 }
 async function deletePayment(saleId,index){
   const s=db.sales.find(x=>x.id===saleId);
