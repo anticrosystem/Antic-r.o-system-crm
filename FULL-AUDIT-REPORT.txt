@@ -1,0 +1,54 @@
+ANTIC R.O SYSTEM CRM — FULL STATIC AUDIT
+=========================================
+
+Audit target: ANTIC-RO-SYSTEM-CRM-FIXED.zip
+Audit type: source/package static audit. This is not a live production test.
+
+PASS — Package and source checks
+--------------------------------
+- ZIP extracts successfully.
+- manifest.json parses as valid JSON.
+- Both manifest icon files exist: antic-ro-system-192.png and antic-ro-system-512.png.
+- All four inline JavaScript blocks pass Node.js syntax checks.
+- Static HTML parse found no duplicate IDs in the live document markup.
+- No missing literal getElementById() targets were found in the static scan.
+- No eval() calls were found in the inspected HTML JavaScript.
+- firestore.rules restricts access under users/{uid}/crm to an authenticated user whose UID matches {uid}.
+
+FIXED — Service Worker / PWA
+----------------------------
+- Removed the nonexistent purixa-logo.png cache reference.
+- Added the actual Antic logo files to the cache list.
+- Each asset is cached independently so one missing asset does not fail the whole install.
+- Added a navigation offline fallback.
+- Updated service worker registration query and cache version.
+- Aligned cloud metadata version string to v22.74.
+
+NOT AN ERROR — printInvoiceWrap
+-------------------------------
+The earlier concern about duplicate printInvoiceWrap IDs was a false positive: those occurrences are in separate generated print-window template strings, not duplicate IDs in the live page DOM. They were not changed to avoid breaking invoice printing.
+
+REMAINING RISKS / NOT VERIFIED LIVE
+-----------------------------------
+1. Firebase project configuration is present in client code. Firebase web API keys are generally public identifiers, not secrets; security depends on Authentication settings, authorized domains, Firestore rules, and project restrictions. Verify these in Firebase Console.
+2. Firestore rules in this package must actually be published to the connected Firebase project. Static code cannot confirm deployment state.
+3. Live sign-in, password reset, account creation, cross-device sync, concurrent edits, offline-to-online recovery, invoice/PDF generation, WhatsApp links, stock/payment calculations, and deletion/restore flows were not run against a real browser and Firebase project.
+4. CRM records are stored in browser localStorage. Anyone with access to the same unlocked browser profile may be able to access them; use device screen lock and avoid shared devices. Browser storage is not a backup.
+5. Sync behavior should be tested with a backup and two test accounts/devices before real data use. Do not test destructive actions on production data.
+6. External CDN scripts (Firebase compat SDKs and html2pdf.js) require internet access unless separately cached by the browser.
+7. The Service Worker caches the main HTML page; this does not guarantee every feature works offline, especially Firebase/cloud features and external CDN libraries.
+
+RECOMMENDED SAFE TEST PLAN
+--------------------------
+- Make a backup/export from the current CRM before deploying.
+- Deploy the files to the intended GitHub Pages repository root.
+- Open the site online and confirm the new service worker activates.
+- Sign in with a test account and confirm a record appears only in that account.
+- Create a test customer, sale, payment, service and AMC; verify totals and history.
+- Test on a second device using the same account; verify sync.
+- Test offline reopening, reconnecting, and invoice PDF/print.
+- Verify Firestore rules in Firebase Console before storing real customer data.
+
+Conclusion
+----------
+The package passes the listed static checks and the identified PWA cache issue has been repaired. It is NOT certified error-free until the remaining live tests are completed.

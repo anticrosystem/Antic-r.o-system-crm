@@ -1,0 +1,27 @@
+ANTIC R.O SYSTEM CRM — FIXED BUILD NOTES
+=======================================
+
+Changes applied
+---------------
+1. Fixed the Service Worker cache list:
+   - Removed the nonexistent purixa-logo.png reference.
+   - Added the actual antic-ro-system-192.png and antic-ro-system-512.png assets.
+   - Kept the legacy icon files only where they exist in the package.
+2. Made Service Worker installation resilient:
+   - Each asset is cached independently; a missing optional asset no longer prevents installation.
+3. Improved offline navigation behavior:
+   - Uses the network first for page navigation and falls back to the cached app page.
+   - Shows a clear offline message if the app page has never been cached.
+4. Updated the cache version and Service Worker registration query so the browser can install the repair.
+
+Important verification notes
+----------------------------
+- The two occurrences of id="printInvoiceWrap" are inside separate generated print-window HTML template strings, not two elements in the same live CRM document. They were not changed because changing them could break printing.
+- JavaScript parsing/static checks are not the same as a live test of Firebase login, Firestore permissions, sync, invoices, or payment calculations.
+- Firebase rules still need to be published and tested in the Firebase Console. Do not publish customer data, Firebase service credentials, or backup files to a public GitHub repository.
+- After uploading these files to GitHub Pages, open the CRM online once so the updated Service Worker can install. If the old version remains on Android, close the installed app and reopen it; if needed, clear the site's cached data in Chrome and load the site again.
+
+Files changed
+-------------
+- sw.js
+- index.html (Service Worker version query only)

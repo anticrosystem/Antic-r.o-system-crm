@@ -2218,7 +2218,7 @@ async function syncCloudData(silent=false){
   if(!firestore||!firebaseAuth.currentUser||cloudSyncing)return false;
   cloudSyncing=true;
   try{
-    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.73"},{merge:true});
+    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.74"},{merge:true});
     await syncNormalizedCollections();
     if(!silent)toast("☁️ Cloud synced");
     return true;
@@ -3134,7 +3134,7 @@ async function deleteSale(id){
     if(legacySnap.exists && legacySnap.data()?.data){
       const legacyData=normalizeLoadedDB(legacySnap.data().data);
       legacyData.sales=(legacyData.sales||[]).filter(x=>String(x.id)!==String(id) && String(x.invoiceNo||"")!==String(sale.invoiceNo||""));
-      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.73"},{merge:true});
+      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.74"},{merge:true});
     }
 
     // Do not run the full sync here: it can turn a successful deletion into a
@@ -3309,7 +3309,7 @@ async function installPWA(){
 }
 if("serviceWorker" in navigator){
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=antic-1", {scope:"./"})
+    navigator.serviceWorker.register("./sw.js?v=antic-2", {scope:"./"})
       .then(() => console.log("Antic R.O System CRM service worker registered"))
       .catch(err => console.warn("PWA service worker registration failed", err));
   });
