@@ -1,15 +1,11 @@
-ANTIC R.O SYSTEM CRM — v22.78 TECHNICIAN FIX
+ANTIC R.O SYSTEM CRM v22.78 — MASTER-BASED FIXES
 
-Changes:
-- Technician list rendering now normalizes valid records and applies case-insensitive search/status filtering.
-- Summary counts use valid technician records, avoiding misleading counts from sparse/null array slots.
-- Added Edit Technician workflow.
-- Added Call and WhatsApp actions.
-- Prevents deleting technicians that have service or technician-work history; set them Off Duty/Inactive instead.
-- Technician Work dropdowns tolerate missing/null records and technician ID string/number differences.
-- Version updated to v22.78.
+Master source: uploaded Antic-RO-System-CRM-v22.77-Final-Maintenance.zip.
 
-Safety:
-- Existing customer, sales, service, AMC, invoice, Firebase configuration and local data structures were retained.
-- No live Firebase data was accessed or changed.
-- Test in a backup/staging copy before replacing the live deployment.
+Confirmed Technician root cause: renderTech() called initials(), but initials was declared as a local variable inside renderCustomers(). That caused a ReferenceError while generating technician table rows; summary counters could already have rendered. Fixed by computing initials within each technician row.
+
+Technician renderer now safely handles null/malformed technician entries and missing services arrays, uses normalized technician IDs for job matching, and reports search/status-filter empty states separately. Technician Work dropdowns also skip null entries safely.
+
+Login flow now waits for Firebase auth-state callback and CRM data recovery before hiding the login overlay. Cloud load failure leaves the login overlay visible with a useful message. Empty cloud account is treated as a valid login and existing local data is not overwritten. Login errors include clearer network/credential messages.
+
+Service-worker cache version updated to v22.78 to force fresh app assets. Existing logo, invoice design, signature, Firestore rules, Firebase config and CRM modules retained. No live Firebase data accessed or changed.
