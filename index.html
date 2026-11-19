@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<title>Antic R.O System CRM — v22.78 PWA</title>
+<title>Antic R.O System CRM — v22.77 PWA</title>
 <style>
 *{box-sizing:border-box}
 :root{--blue:#0b6efd;--dark:#17324d;--bg:#f4f7fb;--card:#fff;--muted:#6b7c93;--line:#e4eaf1;--green:#16a34a;--red:#dc2626;--orange:#f59e0b}
@@ -1293,7 +1293,7 @@ body{background:var(--r-bg)!important;color:#15263d!important}
 <div id="authOverlay">
   <div class="auth-box">
     <img class="auth-logo" src="antic-ro-system-512.png" alt="Antic R.O System">
-    <h2>☁️ Antic R.O System CRM v22.78</h2>
+    <h2>☁️ Antic R.O System CRM v22.77</h2>
     <p class="mini" id="authModeText">Cloud login is enabled after Firebase setup.</p>
     <div id="firebaseSetupBox">
       <label class="mini">Firebase Config JSON</label>
@@ -2075,7 +2075,7 @@ const BUILT_IN_FIREBASE_CONFIG={
 };
 function getFirebaseConfig(){try{const saved=localStorage.getItem(FIREBASE_KEY);if(saved)return JSON.parse(saved);return BUILT_IN_FIREBASE_CONFIG}catch{return BUILT_IN_FIREBASE_CONFIG}}
 function setCloudStatus(text){const x=document.getElementById("cloudStatus");if(x)x.textContent=text;const i=document.getElementById("cloudSettingsInfo");if(i)i.textContent=text+(firebaseAuth?.currentUser?" · "+firebaseAuth.currentUser.email:"")}
-function initFirebase(){const cfg=getFirebaseConfig();if(!cfg||!cfg.apiKey||!cfg.projectId)return false;try{if(!firebase.apps.length)firebaseApp=firebase.initializeApp(cfg);else firebaseApp=firebase.app();firebaseAuth=firebase.auth();firestore=firebase.firestore();cloudReady=true;setCloudStatus(firebaseAuth.currentUser?"☁️ Checking Cloud...":"☁️ Cloud Login");firebaseAuth.onAuthStateChanged(async user=>{if(user){setCloudStatus("☁️ Loading CRM data...");const loaded=await loadCloudData();if(loaded){setCloudStatus("☁️ Cloud Connected");hideLoginOverlay()}else{setCloudStatus("⚠️ Cloud Load Failed");const msg=document.getElementById("authMsg");if(msg)msg.textContent="Login succeeded, but CRM data could not be loaded. Check internet and Firestore permissions, then retry.";showLoginOverlay()}}else{setCloudStatus("🔐 Login Required")}});return true}catch(e){console.error(e);setCloudStatus("⚠️ Cloud Error");return false}}
+function initFirebase(){const cfg=getFirebaseConfig();if(!cfg||!cfg.apiKey||!cfg.projectId)return false;try{if(!firebase.apps.length)firebaseApp=firebase.initializeApp(cfg);else firebaseApp=firebase.app();firebaseAuth=firebase.auth();firestore=firebase.firestore();cloudReady=true;setCloudStatus(firebaseAuth.currentUser?"☁️ Cloud Connected":"☁️ Cloud Login");firebaseAuth.onAuthStateChanged(async user=>{if(user){setCloudStatus("☁️ Cloud Connected");await loadCloudData()}else{setCloudStatus("🔐 Login Required")}});return true}catch(e){console.error(e);setCloudStatus("⚠️ Cloud Error");return false}}
 async function cloudUserBase(){return firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("_root")}
 async function commitFirestoreOps(ops){
   const CHUNK=450;
@@ -2207,13 +2207,12 @@ async function loadCloudData(){
       // Only sync after a successful non-empty recovery load. This keeps existing cloud data intact.
       syncNormalizedCollections().catch(console.error);
       toast("☁️ Recovery data loaded");
-      return true;
+      return;
     }
 
-    // No cloud records found. Login is valid; keep current local data and do not overwrite Firebase.
+    // No cloud records found. Do not overwrite Firebase with an empty local DB.
     toast("⚠️ No cloud records found — Firebase was not changed");
-    return true;
-  }catch(e){console.error(e);toast("Cloud recovery failed");return false}
+  }catch(e){console.error(e);toast("Cloud recovery failed")}
 }
 
 async function syncCloudData(silent=false){
@@ -2221,7 +2220,7 @@ async function syncCloudData(silent=false){
   if(cloudSyncing){cloudSyncRequested=true;return true}
   cloudSyncing=true;
   try{
-    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.78"},{merge:true});
+    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.77"},{merge:true});
     await syncNormalizedCollections();
     if(!silent)toast("☁️ Cloud synced");
     return true;
@@ -2242,13 +2241,13 @@ function saveFirebaseConfigFromAuth(){try{const cfg=JSON.parse(document.getEleme
 function showLoginOverlay(){const o=document.getElementById("authOverlay");if(o)o.classList.add("show");const cfg=getFirebaseConfig();if(cfg){document.getElementById("firebaseSetupBox").style.display="none";document.getElementById("loginBox").style.display="block";document.getElementById("authModeText").textContent="Firebase connected. Login to sync your CRM."}}
 function hideLoginOverlay(){document.getElementById("authOverlay")?.classList.remove("show")}
 function continueLocalMode(){hideLoginOverlay();setCloudStatus("💾 Local Mode");toast("Using local mode") }
-async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in and loading CRM data...";await firebaseAuth.signInWithEmailAndPassword(email,pass)}catch(e){document.getElementById("authMsg").textContent=e.code==="auth/network-request-failed"?"Network error. Check your internet connection and try again.":e.code==="auth/invalid-credential"?"Email or password is incorrect.":(e.message||"Login failed")}}
+async function cloudLogin(){if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password.";return}try{document.getElementById("authMsg").textContent="Signing in...";await firebaseAuth.signInWithEmailAndPassword(email,pass);hideLoginOverlay()}catch(e){document.getElementById("authMsg").textContent=e.message||"Login failed"}}
 async function cloudCreateAccount(){
   if(!firebaseAuth){document.getElementById("authMsg").textContent="Configure Firebase first.";return}
   const email=document.getElementById("loginEmail").value.trim(),pass=document.getElementById("loginPassword").value;
   if(!email||!pass){document.getElementById("authMsg").textContent="Enter email and password first.";return}
   if(pass.length<6){document.getElementById("authMsg").textContent="Password must be at least 6 characters.";return}
-  try{document.getElementById("authMsg").textContent="Creating account and loading CRM...";await firebaseAuth.createUserWithEmailAndPassword(email,pass)}catch(e){document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
+  try{document.getElementById("authMsg").textContent="Creating account...";await firebaseAuth.createUserWithEmailAndPassword(email,pass);hideLoginOverlay();toast("Admin account created & logged in")}catch(e){document.getElementById("authMsg").textContent=e.message||"Account creation failed"}
 }
 async function cloudLogout(){if(firebaseAuth?.currentUser){await firebaseAuth.signOut();showLoginOverlay()}}
 function cloudSyncNow(){if(!cloudReady||!firebaseAuth?.currentUser){toast("Please login to cloud first");return}syncCloudData(false)}
@@ -2739,7 +2738,7 @@ function renderTodaysWork(){
 
 function reminderRecordServiceByCustomer(id){goToPage("service");setTimeout(()=>openServiceModal(id),100)}
 
-function fillTechnicianWorkOptions(){const tt=document.getElementById("twTech"),tc=document.getElementById("twCustomer"),ft=document.getElementById("twFilterTech"),techs=Array.isArray(db.technicians)?db.technicians.filter(x=>x&&typeof x==="object"):[],customers=Array.isArray(db.customers)?db.customers.filter(x=>x&&typeof x==="object"):[];if(tt)tt.innerHTML='<option value="">Select Technician</option>'+techs.map(x=>`<option value="${esc(x.id)}">${esc(x.name||"Unnamed")}</option>`).join("");if(tc)tc.innerHTML='<option value="">Select Customer</option>'+customers.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("");if(ft)ft.innerHTML='<option value="">All Technicians</option>'+techs.map(x=>`<option value="${esc(x.id)}">${esc(x.name||"Unnamed")}</option>`).join("")}
+function fillTechnicianWorkOptions(){const tt=document.getElementById("twTech"),tc=document.getElementById("twCustomer"),ft=document.getElementById("twFilterTech");if(tt)tt.innerHTML='<option value="">Select Technician</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");if(tc)tc.innerHTML='<option value="">Select Customer</option>'+db.customers.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("");if(ft)ft.innerHTML='<option value="">All Technicians</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}
 function saveTechnicianWork(){const date=document.getElementById("twDate")?.value||today,technicianId=Number(document.getElementById("twTech")?.value||0),customerId=Number(document.getElementById("twCustomer")?.value||0),details=document.getElementById("twDetails")?.value.trim()||"",status=document.getElementById("twStatus")?.value||"Complete",amount=Number(document.getElementById("twAmount")?.value||0);if(!technicianId||!details){toast("Technician and work details are required");return}const tech=db.technicians.find(x=>Number(x.id)===technicianId),c=db.customers.find(x=>Number(x.id)===customerId);const editId=window.editingTechnicianWorkId;if(editId){const w=(db.technicianWork||[]).find(x=>String(x.id)===String(editId));if(w){Object.assign(w,{date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}}else{db.technicianWork.push({id:Date.now(),date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}window.editingTechnicianWorkId=null;persist();document.getElementById("twDetails").value="";document.getElementById("twAmount").value=0;const btn=document.querySelector('#technicianWork button[onclick="saveTechnicianWork()"]');if(btn)btn.textContent="💾 Save Work";renderTechnicianWork();toast(editId?"Technician work updated":"Technician work saved")}
 
 function renderTechnicianWork(){fillTechnicianWorkOptions();const q=(document.getElementById("twSearch")?.value||"").toLowerCase();const fd=document.getElementById("twFilterDate")?.value||"";const ft=Number(document.getElementById("twFilterTech")?.value||0);const rows=(db.technicianWork||[]).filter(x=>(!q||[x.technician,x.customer,x.details,x.status].join(" ").toLowerCase().includes(q))&&(!fd||x.date===fd)&&(!ft||Number(x.technicianId)===ft)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));const el=document.getElementById("technicianWorkTable");if(el)el.innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.technician)}</td><td>${esc(x.customer||"-")}</td><td>${esc(x.details)}</td><td><span class="tw-status">${esc(x.status)}</span></td><td>${money(x.amount||0)}</td><td><button class="btn" onclick="editTechnicianWork(${JSON.stringify(String(x.id))})">✏️ Edit</button> <button class="btn red" onclick="deleteTechnicianWork(${JSON.stringify(String(x.id))})">🗑 Delete</button></td></tr>`).join(""):'<tr><td colspan="7" class="empty">No technician work found.</td></tr>'}
@@ -2963,39 +2962,19 @@ function reconcileServiceInventory(service,previous){
   }else service.inventoryDeducted=false;
 }
 function renderTech(){
-  const q=(document.getElementById("techSearch")?.value||"").trim().toLowerCase();
-  const filter=(document.getElementById("techStatusFilter")?.value||"").trim().toLowerCase();
-  const all=Array.isArray(db.technicians)?db.technicians.filter(x=>x&&typeof x==="object"):[];
-  const services=Array.isArray(db.services)?db.services:[];
-  const normalizedStatus=x=>String(x.status||"Inactive").trim().toLowerCase();
-  const isOpen=s=>!["completed","cancelled","closed"].includes(String(s.status||"").trim().toLowerCase());
-  const active=all.filter(x=>["active","available","busy"].includes(normalizedStatus(x))).length;
-  const busy=all.filter(x=>normalizedStatus(x)==="busy").length;
-  const available=all.filter(x=>normalizedStatus(x)==="available").length;
-  const assigned=all.reduce((total,x)=>total+services.filter(s=>
-    (String(s.technicianId??"")===String(x.id)||String(s.tech||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase())&&isOpen(s)
-  ).length,0);
+  const q=(document.getElementById("techSearch")?.value||"").toLowerCase().trim();
+  const filter=document.getElementById("techStatusFilter")?.value||"";
+  const all=db.technicians||[];
+  const active=all.filter(x=>["active","available"].includes(String(x.status||"").toLowerCase())).length;
+  const assigned=all.reduce((n,x)=>n+db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length,0);
+  const busy=all.filter(x=>String(x.status||"").toLowerCase()==="busy").length;
+  const available=all.filter(x=>String(x.status||"").toLowerCase()==="available").length;
   const summary=document.getElementById("techSummary");
-  if(summary) summary.innerHTML=`<div class="ref-summary-card"><div class="ref-summary-icon tech-icon-blue">♟</div><div class="ref-summary-copy"><div class="label">TOTAL TECHNICIANS</div><div class="value">${all.length}</div><div class="sub">Registered technicians</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-green">✓</div><div class="ref-summary-copy"><div class="label">ACTIVE</div><div class="value">${active}</div><div class="sub">Active / available / busy</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-orange">⚒</div><div class="ref-summary-copy"><div class="label">OPEN JOBS</div><div class="value">${assigned}</div><div class="sub">Currently assigned</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-purple">↗</div><div class="ref-summary-copy"><div class="label">AVAILABLE</div><div class="value">${available}</div><div class="sub">${busy} busy</div></div></div>`;
-  const rows=all.filter(x=>{
-    const hay=[x.name,x.mobile,x.area].map(v=>String(v||"")).join(" ").toLowerCase();
-    return (!q||hay.includes(q))&&(!filter||normalizedStatus(x)===filter);
-  });
+  if(summary) summary.innerHTML=`<div class="ref-summary-card"><div class="ref-summary-icon tech-icon-blue">♟</div><div class="ref-summary-copy"><div class="label">TOTAL TECHNICIANS</div><div class="value">${all.length}</div><div class="sub">Registered technicians</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-green">✓</div><div class="ref-summary-copy"><div class="label">ACTIVE</div><div class="value">${active}</div><div class="sub">Active / available</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-orange">⚒</div><div class="ref-summary-copy"><div class="label">OPEN JOBS</div><div class="value">${assigned}</div><div class="sub">Currently assigned</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-purple">↗</div><div class="ref-summary-copy"><div class="label">AVAILABLE</div><div class="value">${available}</div><div class="sub">${busy} busy</div></div></div>`;
+  const arr=all.filter(x=>{const hay=(String(x.name||"")+" "+String(x.mobile||"")+" "+String(x.area||"")).toLowerCase();return (!q||hay.includes(q))&&(!filter||String(x.status||"")===filter)});
   const body=document.getElementById("techTable");
   if(!body)return;
-  if(!rows.length){
-    body.innerHTML=`<tr><td colspan="6" class="empty">${all.length?"No technicians match this search or status filter.":"No technicians registered. Use Add Technician to add one."}</td></tr>`;
-    return;
-  }
-  body.innerHTML=rows.map(x=>{
-    const name=String(x.name||"Unnamed");
-    const initials=name.trim().split(/\s+/).slice(0,2).map(v=>v.charAt(0)).join("").toUpperCase()||"T";
-    const jobs=services.filter(s=>
-      (String(s.technicianId??"")===String(x.id)||String(s.tech||"").trim().toLowerCase()===name.trim().toLowerCase())&&isOpen(s)
-    ).length;
-    const phone=String(x.mobile||"");
-    return `<tr><td><div class="tech-person"><span class="tech-avatar">${esc(initials)}</span><div><b>${esc(name)}</b><div class="mini">${esc(x.area||"Area not set")}</div></div></div></td><td><span class="tech-phone">${esc(phone||"-")}</span></td><td>${esc(x.area||"-")}</td><td>${statusBadge(String(x.status||"Inactive"))}</td><td><span class="tech-job-badge ${jobs?"has-jobs":""}">${jobs}</span></td><td><div class="tech-actions"><button class="btn" title="Call technician" aria-label="Call technician" onclick="callNo(${JSON.stringify(phone)})">📞</button><button class="btn red" title="Delete technician" aria-label="Delete technician" onclick="del('technicians',${JSON.stringify(x.id)})">🗑</button></div></td></tr>`;
-  }).join("");
+  body.innerHTML=arr.length?arr.map(x=>{const jobs=db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length;return `<tr><td><div class="tech-person"><span class="tech-avatar">${esc(initials(x.name||"T"))}</span><div><b>${esc(x.name||"Unnamed")}</b><div class="mini">${esc(x.area||"Area not set")}</div></div></div></td><td><span class="tech-phone">${esc(x.mobile||"-")}</span></td><td>${esc(x.area||"-")}</td><td>${statusBadge(String(x.status||"Inactive"))}</td><td><span class="tech-job-badge ${jobs?'has-jobs':''}">${jobs}</span></td><td><div class="tech-actions"><button class="btn" title="Call technician" aria-label="Call technician" onclick="callNo('${String(x.mobile||"").replace(/'/g,"\'")}')">📞</button><button class="btn red" title="Delete technician" aria-label="Delete technician" onclick="del('technicians',${x.id})">🗑</button></div></td></tr>`}).join(""):`<tr><td colspan="6" class="empty">No technicians found.</td></tr>`;
 }
 let editingExpenseId=null;
 function openExpenseModal(id=null){editingExpenseId=id;document.getElementById("expenseModalTitle").textContent=id?"✏️ Edit Expense":"💸 Add Expense";const x=id?db.expenses.find(e=>e.id===id):null;expenseDate.value=x?.date||today;expenseCategory.value=x?.category||"Other";expenseDescription.value=x?.description||"";expenseAmount.value=Number(x?.amount||0);expenseMode.value=x?.mode||"Cash";expenseNotes.value=x?.notes||"";openModal("expenseModal")}
@@ -3196,7 +3175,7 @@ async function deleteSale(id){
     if(legacySnap.exists && legacySnap.data()?.data){
       const legacyData=normalizeLoadedDB(legacySnap.data().data);
       legacyData.sales=(legacyData.sales||[]).filter(x=>String(x.id)!==String(id) && String(x.invoiceNo||"")!==String(sale.invoiceNo||""));
-      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.78"},{merge:true});
+      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.77"},{merge:true});
     }
 
     // Do not run the full sync here: it can turn a successful deletion into a
