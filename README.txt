@@ -1,11 +1,7 @@
-Antic R.O System CRM - Updated App Icon
+Antic R.O System CRM v22.77 — Maintenance Build
 
-Files:
-- index.html : CRM source
-- manifest.json : PWA app manifest
-- antic-ro-system-192.png : new app icon
-- antic-ro-system-512.png : new app icon
+Keep all files in the same project root as index.html when deploying to GitHub Pages.
+Make a JSON backup before replacing an existing deployment.
 
-The CRM application code is preserved; the app icon is changed through the PWA manifest.
-For GitHub Pages, upload/replace these files together in the same folder as index.html.
-If the old icon remains on an already-installed Android app, remove the old PWA shortcut/app and install it again after the new files are live.
+This build retains the Antic R.O System logo and existing CRM modules.
+See FIXES-V22.77.txt and FULL-AUDIT-REPORT-V22.77.txt for changes and verification limits.

@@ -1,0 +1,21 @@
+ANTIC R.O SYSTEM CRM — LOGO UPDATE v22.76
+
+Updated using the newly supplied Antic R.O System logo.
+
+Changes:
+- Replaced the primary CRM login logo.
+- Replaced the sidebar/brand logo.
+- Replaced all embedded invoice logo images (Sales, Service, AMC templates).
+- Updated legacy app icon image files so no old logo remains in icon assets.
+- Updated Apple touch icon to the new emblem icon.
+- Updated PWA manifest icons to the new emblem icon.
+- Added PWA icon assets to the service-worker cache list.
+- Bumped service-worker cache key to v22.76 to refresh cached assets.
+
+No customer database, Firebase configuration, Firestore rules, invoice fields, or business records were intentionally changed.
+
+After deploying:
+1. Keep a JSON backup first.
+2. Replace project files with this package.
+3. Reopen the CRM online once so the service worker fetches the new assets.
+4. If an old icon remains on Android home screen, remove the old shortcut and install/add it again.
