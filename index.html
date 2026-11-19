@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<title>Antic R.O System CRM — v22.73 PWA</title>
+<title>Antic R.O System CRM — v22.75 PWA</title>
 <style>
 *{box-sizing:border-box}
 :root{--blue:#0b6efd;--dark:#17324d;--bg:#f4f7fb;--card:#fff;--muted:#6b7c93;--line:#e4eaf1;--green:#16a34a;--red:#dc2626;--orange:#f59e0b}
@@ -89,7 +89,7 @@ th{background:#f8fafc;color:#53677d}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Antic R.O System CRM">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="antic-ro-system-192.png">
 <style>
 #authOverlay{position:fixed;inset:0;background:#f4f7fb;z-index:10000;display:none;align-items:center;justify-content:center;padding:18px}
 #authOverlay.show{display:flex}.auth-box{background:#fff;width:min(430px,100%);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 12px 40px #102a4320}.auth-box h2{margin:0 0 6px}.auth-box input,.auth-box textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin:6px 0}.auth-box textarea{min-height:150px;font-family:monospace;font-size:12px}.cloud-status{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:20px;background:#eef2ff;color:#3949ab;font-size:11px;font-weight:700}
@@ -1293,7 +1293,7 @@ body{background:var(--r-bg)!important;color:#15263d!important}
 <div id="authOverlay">
   <div class="auth-box">
     <img class="auth-logo" src="antic-ro-system-512.png" alt="Antic R.O System">
-    <h2>☁️ Antic R.O System CRM v22.73</h2>
+    <h2>☁️ Antic R.O System CRM v22.75</h2>
     <p class="mini" id="authModeText">Cloud login is enabled after Firebase setup.</p>
     <div id="firebaseSetupBox">
       <label class="mini">Firebase Config JSON</label>
@@ -1883,7 +1883,8 @@ body{background:var(--r-bg)!important;color:#15263d!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
 const KEY="anticROSystemCRM_v1";
-const today=new Date().toISOString().slice(0,10);
+function localDateString(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+const today=localDateString();
 const emptyDB=()=>({leads:[],customers:[],quotations:[],sales:[],services:[],amcs:[],technicians:[],technicianWork:[],inventory:[],inventoryMovements:[],expenses:[],invoiceCounter:0,serviceInvoiceCounter:0,billNumberFormatVersion:0});
 let db=loadDB();
 function normalizeBillNumbersOnce(){
@@ -2061,7 +2062,7 @@ function ensureCustomersFromTransactions(d){
   recalcAllServiceSchedules(d);
   return d;
 }
-let cloudSyncing=false, cloudReady=false, firebaseApp=null, firebaseAuth=null, firestore=null;
+let cloudSyncing=false, cloudSyncRequested=false, cloudReady=false, firebaseApp=null, firebaseAuth=null, firestore=null;
 const FIREBASE_KEY="anticFirebaseConfig_v1";
 const BUILT_IN_FIREBASE_CONFIG={
   apiKey:"AIzaSyAaxOfEeouYjtAlcrJS8crpKQlg0SHoius",
@@ -2094,10 +2095,10 @@ async function syncNormalizedCollections(){
     const col=base.collection(key);
     const snap=await col.get();
     const current=new Map((db[key]||[]).map(x=>[String(x.id),x]));
-    const deletes=[], writes=[];
-    snap.forEach(doc=>{if(!current.has(doc.id))deletes.push({type:"delete",ref:doc.ref});});
+    const writes=[];
+    // Add/update only. Absence on this device is not proof that a cloud record
+    // was intentionally deleted (another device may have newer data).
     current.forEach((item,id)=>writes.push({type:"set",ref:col.doc(id),data:item}));
-    await commitFirestoreOps(deletes);
     await commitFirestoreOps(writes);
   }
 }
@@ -2215,15 +2216,22 @@ async function loadCloudData(){
 }
 
 async function syncCloudData(silent=false){
-  if(!firestore||!firebaseAuth.currentUser||cloudSyncing)return false;
+  if(!firestore||!firebaseAuth?.currentUser)return false;
+  if(cloudSyncing){cloudSyncRequested=true;return true}
   cloudSyncing=true;
   try{
-    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.74"},{merge:true});
+    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.75"},{merge:true});
     await syncNormalizedCollections();
     if(!silent)toast("☁️ Cloud synced");
     return true;
   }catch(e){console.error(e);if(!silent)toast("Cloud sync failed");return false}
-  finally{cloudSyncing=false}
+  finally{
+    cloudSyncing=false;
+    if(cloudSyncRequested){
+      cloudSyncRequested=false;
+      if(firestore&&firebaseAuth?.currentUser)Promise.resolve().then(()=>syncCloudData(true));
+    }
+  }
 }
 function persist(){ensureCustomersFromTransactions(db);localStorage.setItem(KEY,JSON.stringify(db));renderAll();if(cloudReady&&firebaseAuth?.currentUser)syncCloudData(true)}
 
@@ -2267,7 +2275,7 @@ function openQuotationModal(){
   const form=document.getElementById("quotationModal"); if(!form)return;
   document.getElementById("quoteDate").value=today;
   document.getElementById("quoteValidUntil").value=addMonths(today,0).replace(/\d{2}$/,String(new Date(today+"T00:00:00").getDate()).padStart(2,"0"));
-  document.getElementById("quoteValidUntil").value=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+  document.getElementById("quoteValidUntil").value=localDateString(new Date(Date.now()+7*86400000));
   document.getElementById("quoteStatus").value="Draft";
   fillQuotationCustomerList();
   ["quoteCustomer","quoteMobile","quoteAddress","quoteProduct","quoteQty","quotePrice","quoteNotes"].forEach(id=>{const x=document.getElementById(id);if(x)x.value=id==="quoteQty"?1:""});
@@ -2419,14 +2427,14 @@ function openCustomerService(id){const c=db.customers.find(x=>x.id===Number(id))
 // Open the AMC form directly from a customer profile.
 function openAMCForCustomer(id){const c=db.customers.find(x=>x.id===Number(id));if(!c){toast("Customer not found");return}openAMCModal(c.id)}
 function saveService(e){e.preventDefault();const cid=Number(svcCustomer.value);const c=db.customers.find(x=>x.id===cid);if(!c){toast("Please select a customer");return}const tid=Number(svcTech.value)||null;const tech=db.technicians.find(x=>x.id===tid);const serviceDate=svcDate.value||today;const parts=servicePartsFromForm();const partsTotal=parts.reduce((sum,x)=>sum+x.amount,0);const serviceCharge=Math.max(0,+svcAmount.value||0);const grandTotal=serviceCharge+partsTotal;const data={customerId:cid,customer:c.name,mobile:c.mobile||"",problem:svcProblem.value||"General Service",tech:tech?.name||"",technicianId:tid,status:svcStatus.value,amount:serviceCharge,charge:serviceCharge,totalAmount:grandTotal,parts,partsTotal,date:serviceDate,follow:svcFollow.value,notes:svcNotes.value.trim()};let savedId=null,sendCompleted=false;
-  if(editingServiceId){const s=db.services.find(x=>x.id===editingServiceId);if(s){const wasCompleted=s.status==="Completed";Object.assign(s,data);savedId=s.id;sendCompleted=!wasCompleted&&data.status==="Completed"}}else{savedId=Date.now();db.services.unshift({id:savedId,...data});sendCompleted=data.status==="Completed"}
+  let previousService=null;
+  if(editingServiceId){const s=db.services.find(x=>x.id===editingServiceId);if(s){previousService=JSON.parse(JSON.stringify(s));const wasCompleted=s.status==="Completed";Object.assign(s,data);savedId=s.id;sendCompleted=!wasCompleted&&data.status==="Completed"}}else{savedId=Date.now();db.services.unshift({id:savedId,...data});sendCompleted=data.status==="Completed"}
   // Any edit can change which completed event is the latest, so always recalculate
   // the complete Customer + AMC schedule for this customer.
   recalcCustomerNextService(db,cid);
   (db.amcs||[]).filter(a=>Number(a.customerId)===cid).forEach(a=>syncAMCVisitSchedule(db,a));
-  if(data.status==="Completed"){
-    if(!editingServiceId || !db.services.find(x=>x.id===editingServiceId)?.inventoryDeducted){deductServiceParts(parts,savedId); const ss=db.services.find(x=>x.id===savedId); if(ss)ss.inventoryDeducted=true}
-  }
+  const savedService=db.services.find(x=>x.id===savedId);
+  if(savedService)reconcileServiceInventory(savedService,previousService);
   persist();e.target.reset();closeModal("serviceModal");toast(editingServiceId?(data.status==="Completed"?"Service updated — next service set after 3 months":"Service updated"):"Service saved");editingServiceId=null;
   if(sendCompleted){setTimeout(()=>sendServiceBillAndReviewWhatsApp(savedId),450)}
 }
@@ -2484,7 +2492,7 @@ function sendServiceBillAndReviewWhatsApp(id){
 function waByService(id){const s=db.services.find(x=>x.id===id);wa(s?.mobile||db.customers.find(c=>c.id===s?.customerId)?.mobile,`Hello, this is Antic R.O System regarding your service request.`)}
 
 let editingAMCId=null, renewingAMCId=null;
-function addDays(dateStr,days){if(!dateStr)return "";const d=new Date(dateStr+"T00:00:00");d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)}
+function addDays(dateStr,days){if(!dateStr)return "";const d=new Date(dateStr+"T00:00:00");d.setDate(d.getDate()+Number(days||0));return localDateString(d)}
 function addMonths(dateStr,months){if(!dateStr)return "";const d=new Date(dateStr+"T00:00:00");const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+Number(months||0));const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function autoSetAMCEnd(){if(!amcStart.value)return;amcEnd.value=addDays(amcStart.value,364);if(!editingAMCId&&!renewingAMCId)amcNext.value=addMonths(amcStart.value,3)}
 function openAMCRenewal(id){const a=db.amcs.find(x=>x.id===id);if(!a)return;const c=db.customers.find(x=>x.id===a.customerId)||db.customers.find(x=>String(x.name||"").toLowerCase()===String(a.customer||"").toLowerCase());if(!c){toast("Customer not found");return}renewingAMCId=id;editingAMCId=null;document.getElementById("amcModalTitle").textContent="🔄 Renew AMC";fillAMCCustomerOptions(c.id);amcAmount.value=a.amount||0;amcPaid.value=Number(a.paid??a.amount??0);amcMode.value=a.paymentMode||"Cash";const newStart=a.end?addDays(a.end,1):today;amcStart.value=newStart;amcEnd.value=addDays(newStart,364);amcVisits.value=Number(a.visitsTotal??a.visits??0);amcNext.value=addMonths(newStart,3);openModal("amcModal")}
@@ -2751,7 +2759,7 @@ function renderDashboard(){
   const openServices=db.services.filter(x=>!['Completed','Cancelled'].includes(x.status)).length;
   const amcActive=(db.amcs||[]).filter(x=>!x.end||daysFromToday(x.end)>=0).length;
   const amcExpiring=getAMCExpiryRecords().filter(x=>{const d=daysFromToday(x.end);return d!==null&&d>=0&&d<=30});
-  const lowStock=(db.inventory||[]).filter(x=>Number(x.stock||0)<=Number(x.low||0)).length;
+  const lowStock=(db.inventory||[]).filter(x=>Number(x.stock||0)<=Number(x.lowStock||0)).length;
   mLeads.textContent=db.leads.length;
   const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
   setText("mLeadsMonth",monthLeads);
@@ -2920,6 +2928,31 @@ function inventoryLowCount(){return db.inventory.filter(p=>Number(p.stock||0)<=N
 function renderInventory(){const box=document.getElementById("inventoryTable");if(!box)return;const q=(document.getElementById("inventorySearch")?.value||"").toLowerCase().trim();const arr=db.inventory.filter(p=>(String(p.name||"")+" "+String(p.sku||"")).toLowerCase().includes(q));const totalUnits=db.inventory.reduce((a,p)=>a+Number(p.stock||0),0);const lowCount=inventoryLowCount();const totalValue=db.inventory.reduce((a,p)=>a+Number(p.stock||0)*Number(p.purchasePrice||0),0);const totalSaleValue=db.inventory.reduce((a,p)=>a+Number(p.stock||0)*Number(p.salePrice||0),0);document.getElementById("inventorySummary").innerHTML=`<div class="ref-summary-card"><div class="ref-summary-icon inventory-icon-blue">▦</div><div class="ref-summary-copy"><div class="label">TOTAL PARTS</div><div class="value">${db.inventory.length}</div><div class="sub">Spare parts</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon inventory-icon-green">□</div><div class="ref-summary-copy"><div class="label">UNITS IN STOCK</div><div class="value">${totalUnits}</div><div class="sub">Available quantity</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon inventory-icon-orange">!</div><div class="ref-summary-copy"><div class="label">LOW STOCK</div><div class="value">${lowCount}</div><div class="sub">Needs attention</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon inventory-icon-purple">₹</div><div class="ref-summary-copy"><div class="label">STOCK VALUE</div><div class="value">${money(totalValue)}</div><div class="sub">Purchase value · ${money(totalSaleValue)} sale value</div></div></div>`;box.innerHTML=arr.length?arr.map(p=>{const low=Number(p.stock||0)<=Number(p.lowStock||0);return `<tr><td><div class="inventory-part"><span class="inventory-avatar">${esc(String(p.name||"?").trim().charAt(0).toUpperCase())}</span><div><b>${esc(p.name)}</b><div class="mini">${esc(p.sku||"No SKU")}</div></div></div></td><td><span class="inventory-stock-badge ${low?'low':'ok'}">${Number(p.stock||0)}</span></td><td>${Number(p.lowStock||0)}</td><td>${money(p.purchasePrice||0)}</td><td>${money(p.salePrice||0)}</td><td><b>${money(Number(p.stock||0)*Number(p.purchasePrice||0))}</b></td><td><div class="inventory-actions"><button class="btn primary" title="Add or remove stock" aria-label="Add or remove stock" onclick="openStockMovement(${p.id})">＋/−</button><button class="btn" title="Edit part" aria-label="Edit part" onclick="openInventoryModal(${p.id})">✏️</button><button class="btn red" title="Delete part" aria-label="Delete part" onclick="deleteInventory(${p.id})">🗑</button></div></td></tr>`}).join(""):`<tr><td colspan="7" class="empty">No spare parts found.</td></tr>`}
 function deleteInventory(id){if(!confirm("Delete this spare part?"))return;db.inventory=db.inventory.filter(x=>x.id!==id);db.inventoryMovements=db.inventoryMovements.filter(x=>x.partId!==id);persist();toast("Spare part deleted")}
 function deductServiceParts(parts,serviceId){if(!Array.isArray(parts)||!parts.length)return;const warnings=[];parts.forEach(part=>{const name=String(part.name||"").trim().toLowerCase();const p=db.inventory.find(x=>String(x.name||"").trim().toLowerCase()===name);const qty=Math.max(1,Number(part.qty||1));if(!p)return;if(Number(p.stock||0)<qty){warnings.push(`${p.name}: stock ${p.stock||0}, used ${qty}`);return}p.stock=Number(p.stock||0)-qty;db.inventoryMovements.unshift({id:Date.now()+Math.random(),partId:p.id,type:"service",qty,date:today,note:`Used in service #${serviceId}`})});if(warnings.length)toast("Some parts had insufficient stock: "+warnings.join("; "))}
+function reverseServiceParts(service, fallbackParts=[]){
+  if(!service)return;
+  const marker=`Used in service #${service.id}`;
+  const movements=(db.inventoryMovements||[]).filter(m=>m.type==="service"&&m.note===marker);
+  if(movements.length){
+    movements.forEach(m=>{const part=db.inventory.find(p=>p.id===m.partId);if(part)part.stock=Number(part.stock||0)+Number(m.qty||0);});
+    db.inventoryMovements=db.inventoryMovements.filter(m=>!(m.type==="service"&&m.note===marker));
+  }else if(service.inventoryDeducted){
+    // Compatibility for older records whose movement ledger is unavailable.
+    (fallbackParts.length?fallbackParts:(service.parts||[])).forEach(item=>{
+      const part=db.inventory.find(p=>String(p.name||"").trim().toLowerCase()===String(item.name||"").trim().toLowerCase());
+      if(part)part.stock=Number(part.stock||0)+Math.max(1,Number(item.qty||1));
+    });
+  }
+  service.inventoryDeducted=false;
+}
+function reconcileServiceInventory(service,previous){
+  if(!service)return;
+  const wasDeducted=!!previous?.inventoryDeducted;
+  if(wasDeducted)reverseServiceParts(service,previous.parts||[]);
+  if(service.status==="Completed"){
+    deductServiceParts(service.parts||[],service.id);
+    service.inventoryDeducted=true;
+  }else service.inventoryDeducted=false;
+}
 function renderTech(){
   const q=(document.getElementById("techSearch")?.value||"").toLowerCase().trim();
   const filter=document.getElementById("techStatusFilter")?.value||"";
@@ -3134,7 +3167,7 @@ async function deleteSale(id){
     if(legacySnap.exists && legacySnap.data()?.data){
       const legacyData=normalizeLoadedDB(legacySnap.data().data);
       legacyData.sales=(legacyData.sales||[]).filter(x=>String(x.id)!==String(id) && String(x.invoiceNo||"")!==String(sale.invoiceNo||""));
-      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.74"},{merge:true});
+      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.75"},{merge:true});
     }
 
     // Do not run the full sync here: it can turn a successful deletion into a
@@ -3309,7 +3342,7 @@ async function installPWA(){
 }
 if("serviceWorker" in navigator){
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=antic-2", {scope:"./"})
+    navigator.serviceWorker.register("./sw.js?v=antic-3", {scope:"./"})
       .then(() => console.log("Antic R.O System CRM service worker registered"))
       .catch(err => console.warn("PWA service worker registration failed", err));
   });
@@ -3408,7 +3441,7 @@ setInterval(renderReminders,60000);
   }
   window.updateReferenceSummaries=function(){
     const d=(typeof db!=="undefined"?db:{}); const leads=d.leads||[], customers=d.customers||[], sales=d.sales||[], services=d.services||[];
-    const todayValue=(typeof today!=="undefined"?today:new Date().toISOString().slice(0,10));
+    const todayValue=(typeof today!=="undefined"?today:localDateString());
     const won=leads.filter(x=>x.status==='Won').length, newLeads=leads.filter(x=>x.status==='New').length;
     const follow=leads.filter(x=>x.follow||x.followUp||x.nextFollowUp).length;
     setSummary('leadRefSummary',[
