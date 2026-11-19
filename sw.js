@@ -1,10 +1,12 @@
-const CACHE = 'antic-ro-crm-v22.75';
+const CACHE = 'antic-ro-crm-v22.76';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './antic-ro-system-192.png',
   './antic-ro-system-512.png',
+  './antic-pwa-icon-192.png',
+  './antic-pwa-icon-512.png',
   './icon-192.png',
   './icon-512.png',
   './authorized-signature-clean.png'
