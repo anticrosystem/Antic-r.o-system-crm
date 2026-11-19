@@ -1,4 +1,4 @@
-const CACHE = 'antic-ro-crm-v22.77';
+const CACHE = 'antic-ro-crm-v22.76';
 const ASSETS = [
   './',
   './index.html',
