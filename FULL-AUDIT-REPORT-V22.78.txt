@@ -1,0 +1,23 @@
+ANTIC R.O SYSTEM CRM v22.78 — STATIC MAINTENANCE AUDIT
+
+Scope:
+- Reviewed Technician page markup, Technician save flow, Technician Work dropdowns and rendering.
+- Fixed Technician list filtering/rendering robustness, added edit action, guarded deletion where history exists.
+- Kept existing CRM modules and branding files from v22.77 source package.
+
+Static checks performed:
+- ZIP package integrity checked after build.
+- HTML file presence checked.
+- JavaScript syntax check performed on inline scripts (see validation performed during build).
+- Manifest JSON parsed.
+- Firestore rules file retained unchanged.
+
+Not performed:
+- Live Firebase authentication/read/write/delete tests.
+- Two-device synchronization tests.
+- Real customer data migration/restore.
+- Browser/Android visual end-to-end test.
+- Invoice PDF and AMC arithmetic acceptance tests.
+
+Important:
+- This package is a maintenance candidate. Back up existing CRM data before deployment.

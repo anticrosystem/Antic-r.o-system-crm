@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<title>Antic R.O System CRM — v22.77 PWA</title>
+<title>Antic R.O System CRM — v22.78 PWA</title>
 <style>
 *{box-sizing:border-box}
 :root{--blue:#0b6efd;--dark:#17324d;--bg:#f4f7fb;--card:#fff;--muted:#6b7c93;--line:#e4eaf1;--green:#16a34a;--red:#dc2626;--orange:#f59e0b}
@@ -1293,7 +1293,7 @@ body{background:var(--r-bg)!important;color:#15263d!important}
 <div id="authOverlay">
   <div class="auth-box">
     <img class="auth-logo" src="antic-ro-system-512.png" alt="Antic R.O System">
-    <h2>☁️ Antic R.O System CRM v22.77</h2>
+    <h2>☁️ Antic R.O System CRM v22.78</h2>
     <p class="mini" id="authModeText">Cloud login is enabled after Firebase setup.</p>
     <div id="firebaseSetupBox">
       <label class="mini">Firebase Config JSON</label>
@@ -1537,7 +1537,7 @@ body{background:var(--r-bg)!important;color:#15263d!important}
   </section>
 
   <section id="technicians" class="page">
-    <div class="ref-page-head"><div><h2>Technicians</h2><p>Manage technicians, availability and assigned service work</p></div><button class="btn primary" onclick="openModal('techModal')">＋ Add Technician</button></div>
+    <div class="ref-page-head"><div><h2>Technicians</h2><p>Manage technicians, availability and assigned service work</p></div><button class="btn primary" onclick="openTechModal()">＋ Add Technician</button></div>
     <div class="ref-summary-grid tech-ref-summary" id="techSummary"></div>
     <div class="service-filter-row tech-filter-row"><input class="search" id="techSearch" placeholder="Search technician, mobile or area..." oninput="renderTech()"><select id="techStatusFilter" onchange="renderTech()"><option value="">All Status</option><option value="Active">Active</option><option value="Available">Available</option><option value="Busy">Busy</option><option value="Inactive">Inactive</option></select><button class="btn" onclick="document.getElementById('techSearch').value='';document.getElementById('techStatusFilter').value='';renderTech()">All</button></div>
     <div class="table-wrap tech-table-wrap"><table><thead><tr><th>Technician</th><th>Mobile</th><th>Area</th><th>Status</th><th>Open Jobs</th><th>Actions</th></tr></thead><tbody id="techTable"></tbody></table></div>
@@ -1816,11 +1816,11 @@ body{background:var(--r-bg)!important;color:#15263d!important}
 <div class="field full"><label>Notes</label><textarea id="expenseNotes" rows="2"></textarea></div>
 </div><div class="actions"><button type="button" class="btn" onclick="closeModal('expenseModal')">Cancel</button><button class="btn primary">💾 Save Expense</button></div></form></div></div>
 <div class="modal" id="techModal"><div class="modal-box">
-<div class="modal-head"><h3>New Technician</h3><button class="close" onclick="closeModal('techModal')">×</button></div>
+<div class="modal-head"><h3 id="techModalTitle">New Technician</h3><button class="close" onclick="closeModal('techModal')">×</button></div>
 <form onsubmit="saveTech(event)"><div class="form-grid">
-<div class="field"><label>Name *</label><input id="techName" required></div><div class="field"><label>Mobile</label><input id="techMobile"></div>
-<div class="field"><label>Area</label><input id="techArea" placeholder="Rajkot / Area"></div><div class="field"><label>Status</label><select id="techStatus"><option>Available</option><option>Busy</option><option>Off Duty</option></select></div>
-</div><div class="actions"><button type="button" class="btn" onclick="closeModal('techModal')">Cancel</button><button class="btn primary">Save Technician</button></div></form>
+<div class="field"><label>Name *</label><input id="techName" required maxlength="100"></div><div class="field"><label>Mobile</label><input id="techMobile" type="tel" maxlength="20"></div>
+<div class="field"><label>Area</label><input id="techArea" placeholder="Rajkot / Area" maxlength="100"></div><div class="field"><label>Status</label><select id="techStatus"><option>Available</option><option>Busy</option><option>Off Duty</option><option>Inactive</option></select></div>
+</div><div class="actions"><button type="button" class="btn" onclick="closeModal('techModal')">Cancel</button><button class="btn primary">💾 Save Technician</button></div></form>
 </div></div>
 
 
@@ -2220,7 +2220,7 @@ async function syncCloudData(silent=false){
   if(cloudSyncing){cloudSyncRequested=true;return true}
   cloudSyncing=true;
   try{
-    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.77"},{merge:true});
+    await firestore.collection("users").doc(firebaseAuth.currentUser.uid).collection("crm").doc("main").set({data:db,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.78"},{merge:true});
     await syncNormalizedCollections();
     if(!silent)toast("☁️ Cloud synced");
     return true;
@@ -2339,7 +2339,7 @@ function fillServiceCustomerOptions(selectedId=""){
   const s=document.getElementById("svcCustomer");if(!s)return;
   s.innerHTML='<option value="">Select Customer</option>'+db.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
   if(selectedId!==""&&selectedId!==null)s.value=String(selectedId);
-  const t=document.getElementById("svcTech");if(t)t.innerHTML='<option value="">Unassigned</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");
+  const t=document.getElementById("svcTech");if(t)t.innerHTML='<option value="">Unassigned</option>'+techRecords().map(x=>`<option value="${x.id}">${esc(x.name||"Unnamed")}</option>`).join("");
   const date=document.getElementById("svcDate");if(date&&!date.value)date.value=today;
 }
 document.getElementById("svcCustomer")?.addEventListener("change",()=>{const c=db.customers.find(x=>x.id===Number(svcCustomer.value));svcMobile.value=c?.mobile||""});
@@ -2426,7 +2426,7 @@ function openCustomerService(id){const c=db.customers.find(x=>x.id===Number(id))
 
 // Open the AMC form directly from a customer profile.
 function openAMCForCustomer(id){const c=db.customers.find(x=>x.id===Number(id));if(!c){toast("Customer not found");return}openAMCModal(c.id)}
-function saveService(e){e.preventDefault();const cid=Number(svcCustomer.value);const c=db.customers.find(x=>x.id===cid);if(!c){toast("Please select a customer");return}const tid=Number(svcTech.value)||null;const tech=db.technicians.find(x=>x.id===tid);const serviceDate=svcDate.value||today;const parts=servicePartsFromForm();const partsTotal=parts.reduce((sum,x)=>sum+x.amount,0);const serviceCharge=Math.max(0,+svcAmount.value||0);const grandTotal=serviceCharge+partsTotal;const data={customerId:cid,customer:c.name,mobile:c.mobile||"",problem:svcProblem.value||"General Service",tech:tech?.name||"",technicianId:tid,status:svcStatus.value,amount:serviceCharge,charge:serviceCharge,totalAmount:grandTotal,parts,partsTotal,date:serviceDate,follow:svcFollow.value,notes:svcNotes.value.trim()};let savedId=null,sendCompleted=false;
+function saveService(e){e.preventDefault();const cid=Number(svcCustomer.value);const c=db.customers.find(x=>x.id===cid);if(!c){toast("Please select a customer");return}const tid=Number(svcTech.value)||null;const tech=techRecords().find(x=>String(x.id)===String(tid));const serviceDate=svcDate.value||today;const parts=servicePartsFromForm();const partsTotal=parts.reduce((sum,x)=>sum+x.amount,0);const serviceCharge=Math.max(0,+svcAmount.value||0);const grandTotal=serviceCharge+partsTotal;const data={customerId:cid,customer:c.name,mobile:c.mobile||"",problem:svcProblem.value||"General Service",tech:tech?.name||"",technicianId:tid,status:svcStatus.value,amount:serviceCharge,charge:serviceCharge,totalAmount:grandTotal,parts,partsTotal,date:serviceDate,follow:svcFollow.value,notes:svcNotes.value.trim()};let savedId=null,sendCompleted=false;
   let previousService=null;
   if(editingServiceId){const s=db.services.find(x=>x.id===editingServiceId);if(s){previousService=JSON.parse(JSON.stringify(s));const wasCompleted=s.status==="Completed";Object.assign(s,data);savedId=s.id;sendCompleted=!wasCompleted&&data.status==="Completed"}}else{savedId=Date.now();db.services.unshift({id:savedId,...data});sendCompleted=data.status==="Completed"}
   // Any edit can change which completed event is the latest, so always recalculate
@@ -2462,7 +2462,7 @@ ${(Array.isArray(s.parts)?s.parts:[]).map((p,i)=>`<tr><td style="text-align:cent
   <div class="footer"><div class="sig"><div class="sig-line">Customer's Signature</div></div><div class="sig"><div class="for">For, ANTIC R.O SYSTEM</div><img class="sig-img" src="authorized-signature-clean.png" alt="Authorised Signatory"><div class="sig-label">Authorised Signatory</div></div></div>`;
   persist();document.querySelector("#invoiceModal .modal-head h3").textContent="🧾 Service Invoice / Receipt";openModal("invoiceModal");
 }
-function viewService(id){const s=db.services.find(x=>x.id===id);if(!s)return;const c=db.customers.find(x=>x.id===s.customerId)||{};const t=db.technicians.find(x=>x.id===s.technicianId)||{};const completedBtn=s.status==="Completed"?`<button class="btn green" onclick="sendServiceBillAndReviewWhatsApp(${s.id})">📲 Bill + Review WhatsApp</button>`:"";document.getElementById("serviceDetail").innerHTML=`<div class="service-card"><h3>${esc(c.name||s.customer||"-")}</h3><p><b>Mobile:</b> ${esc(c.mobile||s.mobile||"-")}</p><p><b>Date:</b> ${esc(s.date||"-")}</p><p><b>Problem:</b> ${esc(s.problem||"-")}</p><p><b>Technician:</b> ${esc(t.name||s.tech||"Unassigned")}</p><p><b>Status:</b> ${statusBadge(s.status||"Open")}</p><p><b>Service Charge:</b> ${money(s.amount??s.charge??0)}</p><p><b>Parts:</b> ${(Array.isArray(s.parts)&&s.parts.length)?s.parts.map(p=>`${esc(p.name||"Part")} × ${Number(p.qty||1)} @ ${money(p.price||0)} = ${money(p.amount??((p.qty||1)*(p.price||0)))}`).join("<br>"):"No parts added"}</p><p><b>Parts Total:</b> ${money(s.partsTotal||0)}</p><p><b>Grand Total:</b> ${money(s.totalAmount??(Number(s.amount??s.charge??0)+Number(s.partsTotal||0)))}</p><p><b>Follow-up:</b> ${esc(s.follow||"-")}</p><p><b>Details:</b> ${esc(s.notes||"-")}</p><div class="toolbar"><button class="btn primary" onclick="closeModal('serviceDetailModal');editService(${s.id})">✏️ Edit</button><button class="btn" onclick="callNoByService(${s.id})">📞 Call</button><button class="btn" onclick="waByService(${s.id})">💬 WhatsApp</button>${completedBtn}<button class="btn red" onclick="del('services',${s.id});closeModal('serviceDetailModal')">Delete</button></div></div>`;openModal("serviceDetailModal")}
+function viewService(id){const s=db.services.find(x=>x.id===id);if(!s)return;const c=db.customers.find(x=>x.id===s.customerId)||{};const t=techRecords().find(x=>String(x.id)===String(s.technicianId))||{};const completedBtn=s.status==="Completed"?`<button class="btn green" onclick="sendServiceBillAndReviewWhatsApp(${s.id})">📲 Bill + Review WhatsApp</button>`:"";document.getElementById("serviceDetail").innerHTML=`<div class="service-card"><h3>${esc(c.name||s.customer||"-")}</h3><p><b>Mobile:</b> ${esc(c.mobile||s.mobile||"-")}</p><p><b>Date:</b> ${esc(s.date||"-")}</p><p><b>Problem:</b> ${esc(s.problem||"-")}</p><p><b>Technician:</b> ${esc(t.name||s.tech||"Unassigned")}</p><p><b>Status:</b> ${statusBadge(s.status||"Open")}</p><p><b>Service Charge:</b> ${money(s.amount??s.charge??0)}</p><p><b>Parts:</b> ${(Array.isArray(s.parts)&&s.parts.length)?s.parts.map(p=>`${esc(p.name||"Part")} × ${Number(p.qty||1)} @ ${money(p.price||0)} = ${money(p.amount??((p.qty||1)*(p.price||0)))}`).join("<br>"):"No parts added"}</p><p><b>Parts Total:</b> ${money(s.partsTotal||0)}</p><p><b>Grand Total:</b> ${money(s.totalAmount??(Number(s.amount??s.charge??0)+Number(s.partsTotal||0)))}</p><p><b>Follow-up:</b> ${esc(s.follow||"-")}</p><p><b>Details:</b> ${esc(s.notes||"-")}</p><div class="toolbar"><button class="btn primary" onclick="closeModal('serviceDetailModal');editService(${s.id})">✏️ Edit</button><button class="btn" onclick="callNoByService(${s.id})">📞 Call</button><button class="btn" onclick="waByService(${s.id})">💬 WhatsApp</button>${completedBtn}<button class="btn red" onclick="del('services',${s.id});closeModal('serviceDetailModal')">Delete</button></div></div>`;openModal("serviceDetailModal")}
 function callNoByService(id){const s=db.services.find(x=>x.id===id);callNo(s?.mobile||db.customers.find(c=>c.id===s?.customerId)?.mobile)}
 function getReviewLink(){return String(localStorage.getItem("antic_google_review_link")||"").trim()}
 function saveReviewLink(){const el=document.getElementById("reviewLink");if(!el)return;localStorage.setItem("antic_google_review_link",el.value.trim());toast(el.value.trim()?"Google Review link saved":"Review link cleared")}
@@ -2545,7 +2545,7 @@ function printAMCInvoicePDF(){const invoice=document.getElementById("amcInvoiceP
 </body></html>`);w.document.close();toast("AMC Invoice PDF ke liye Save as PDF select karein.")}
 function downloadAMCInvoicePDF(){printAMCInvoicePDF()}
 function shareAMCInvoiceWhatsApp(){const num=String(currentAMCInvoiceMobile||"").replace(/\D/g,"");const msg=encodeURIComponent("Antic R.O System AMC Invoice — PDF attached.");const w=printAMCInvoicePDF();if(w&&typeof w.addEventListener==="function"){try{w.addEventListener("afterprint",()=>{setTimeout(()=>{if(num)window.open("https://wa.me/91"+num+"?text="+msg,"_blank");else window.open("https://web.whatsapp.com/","_blank")},300)},{once:true})}catch(e){}}toast(num?"PDF Save karein. Print window band karte hi customer ka WhatsApp khulega.":"PDF Save karein. Print window band karte hi WhatsApp khulega.")}
-function fillAMCVisitTechnicians(selected=""){const s=document.getElementById("visitTechnician");if(!s)return;s.innerHTML='<option value="">Unassigned</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");if(selected)s.value=String(selected)}
+function fillAMCVisitTechnicians(selected=""){const s=document.getElementById("visitTechnician");if(!s)return;s.innerHTML='<option value="">Unassigned</option>'+techRecords().map(x=>`<option value="${x.id}">${esc(x.name||"Unnamed")}</option>`).join("");if(selected)s.value=String(selected)}
 function openAMCVisit(amcId,index=null){const a=db.amcs.find(x=>x.id===amcId);if(!a)return;if(!Array.isArray(a.visitHistory))a.visitHistory=[];currentAMCVisitId=amcId;editingAMCVisitIndex=index;const v=index!==null?a.visitHistory[index]:null;document.getElementById("amcVisitModalTitle").textContent=v?"Edit AMC Visit":"New AMC Visit";document.getElementById("visitCustomer").value=a.customer||"";document.getElementById("visitDate").value=v?.date||today;fillAMCVisitTechnicians(v?.technicianId||"");document.getElementById("visitStatus").value=v?.status||"Completed";document.getElementById("visitComplaint").value=v?.complaint||"";document.getElementById("visitWork").value=v?.workDone||"";document.getElementById("visitParts").value=v?.parts||"";document.getElementById("visitCharge").value=v?.charge||0;document.getElementById("visitNextService").value=v?.nextService||a.nextService||addMonths(v?.date||today,3);document.getElementById("visitNotes").value=v?.notes||"";openModal("amcVisitModal")}
 function saveAMCVisit(e){
   e.preventDefault();
@@ -2553,7 +2553,7 @@ function saveAMCVisit(e){
   if(!a){toast("AMC not found");return}
   if(!Array.isArray(a.visitHistory))a.visitHistory=[];
   const tid=Number(document.getElementById("visitTechnician").value)||null;
-  const tech=db.technicians.find(x=>x.id===tid);
+  const tech=techRecords().find(x=>String(x.id)===String(tid));
   const v={
     id:editingAMCVisitIndex!==null?(a.visitHistory[editingAMCVisitIndex]?.id||Date.now()):Date.now(),
     date:document.getElementById("visitDate").value||today,
@@ -2590,7 +2590,42 @@ function showAMCHistory(id){
   }
   body.innerHTML=html; openModal("amcHistoryModal");
 }
-function saveTech(e){e.preventDefault();db.technicians.unshift({id:Date.now(),name:techName.value.trim(),mobile:techMobile.value.trim(),area:techArea.value.trim(),status:techStatus.value});persist();e.target.reset();closeModal("techModal");toast("Technician saved")}
+let editingTechId=null;
+function techRecords(){
+  if(!Array.isArray(db.technicians))db.technicians=[];
+  // Filter out sparse/deleted/null slots without changing the original records.
+  return db.technicians.filter(x=>x&&typeof x==="object");
+}
+function openTechModal(id=null){
+  editingTechId=id===null?null:String(id);
+  const x=id===null?null:techRecords().find(t=>String(t.id)===String(id));
+  document.getElementById("techModalTitle").textContent=x?"Edit Technician":"New Technician";
+  document.getElementById("techName").value=x?.name||"";
+  document.getElementById("techMobile").value=x?.mobile||"";
+  document.getElementById("techArea").value=x?.area||"";
+  document.getElementById("techStatus").value=x?.status||"Available";
+  openModal("techModal");
+}
+function saveTech(e){
+  e.preventDefault();
+  const name=document.getElementById("techName").value.trim();
+  const mobile=document.getElementById("techMobile").value.trim();
+  const area=document.getElementById("techArea").value.trim();
+  const status=document.getElementById("techStatus").value||"Available";
+  if(!name){toast("Technician name is required");return}
+  const data={name,mobile,area,status};
+  const wasEditing=editingTechId!==null;
+  if(wasEditing){
+    const x=techRecords().find(t=>String(t.id)===editingTechId);
+    if(!x){toast("Technician record not found");return}
+    Object.assign(x,data);
+  }else{
+    db.technicians.unshift({id:Date.now(),...data});
+  }
+  persist();e.target.reset();closeModal("techModal");
+  editingTechId=null;renderTech();fillTechnicianWorkOptions();
+  toast(wasEditing?"Technician updated":"Technician saved");
+}
 function callNo(n){if(n)location.href="tel:"+String(n).replace(/\s/g,"")}
 function wa(n,msg="Hello, Antic R.O System"){const num=String(n||"").replace(/\D/g,"");if(!num)return toast("Mobile number not available");window.open("https://wa.me/91"+num+"?text="+encodeURIComponent(msg),"_blank")}
 function statusBadge(s){let c=["Completed","Won","Available","Paid","Active"].includes(s)?"green":["Open","New","Assigned","Interested","Quotation","Expiring Soon"].includes(s)?"orange":["Lost","Cancelled","Off Duty","Expired"].includes(s)?"red":"";return `<span class="badge ${c}">${esc(s)}</span>`}
@@ -2738,14 +2773,14 @@ function renderTodaysWork(){
 
 function reminderRecordServiceByCustomer(id){goToPage("service");setTimeout(()=>openServiceModal(id),100)}
 
-function fillTechnicianWorkOptions(){const tt=document.getElementById("twTech"),tc=document.getElementById("twCustomer"),ft=document.getElementById("twFilterTech");if(tt)tt.innerHTML='<option value="">Select Technician</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");if(tc)tc.innerHTML='<option value="">Select Customer</option>'+db.customers.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("");if(ft)ft.innerHTML='<option value="">All Technicians</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}
-function saveTechnicianWork(){const date=document.getElementById("twDate")?.value||today,technicianId=Number(document.getElementById("twTech")?.value||0),customerId=Number(document.getElementById("twCustomer")?.value||0),details=document.getElementById("twDetails")?.value.trim()||"",status=document.getElementById("twStatus")?.value||"Complete",amount=Number(document.getElementById("twAmount")?.value||0);if(!technicianId||!details){toast("Technician and work details are required");return}const tech=db.technicians.find(x=>Number(x.id)===technicianId),c=db.customers.find(x=>Number(x.id)===customerId);const editId=window.editingTechnicianWorkId;if(editId){const w=(db.technicianWork||[]).find(x=>String(x.id)===String(editId));if(w){Object.assign(w,{date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}}else{db.technicianWork.push({id:Date.now(),date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}window.editingTechnicianWorkId=null;persist();document.getElementById("twDetails").value="";document.getElementById("twAmount").value=0;const btn=document.querySelector('#technicianWork button[onclick="saveTechnicianWork()"]');if(btn)btn.textContent="💾 Save Work";renderTechnicianWork();toast(editId?"Technician work updated":"Technician work saved")}
+function fillTechnicianWorkOptions(){const tt=document.getElementById("twTech"),tc=document.getElementById("twCustomer"),ft=document.getElementById("twFilterTech");if(tt)tt.innerHTML='<option value="">Select Technician</option>'+techRecords().map(x=>`<option value="${x.id}">${esc(x.name||"Unnamed")}</option>`).join("");if(tc)tc.innerHTML='<option value="">Select Customer</option>'+db.customers.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("");if(ft)ft.innerHTML='<option value="">All Technicians</option>'+techRecords().map(x=>`<option value="${x.id}">${esc(x.name||"Unnamed")}</option>`).join("")}
+function saveTechnicianWork(){const date=document.getElementById("twDate")?.value||today,technicianId=Number(document.getElementById("twTech")?.value||0),customerId=Number(document.getElementById("twCustomer")?.value||0),details=document.getElementById("twDetails")?.value.trim()||"",status=document.getElementById("twStatus")?.value||"Complete",amount=Number(document.getElementById("twAmount")?.value||0);if(!technicianId||!details){toast("Technician and work details are required");return}const tech=techRecords().find(x=>String(x.id)===String(technicianId)),c=db.customers.find(x=>Number(x.id)===customerId);const editId=window.editingTechnicianWorkId;if(editId){const w=(db.technicianWork||[]).find(x=>String(x.id)===String(editId));if(w){Object.assign(w,{date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}}else{db.technicianWork.push({id:Date.now(),date,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status,amount});}window.editingTechnicianWorkId=null;persist();document.getElementById("twDetails").value="";document.getElementById("twAmount").value=0;const btn=document.querySelector('#technicianWork button[onclick="saveTechnicianWork()"]');if(btn)btn.textContent="💾 Save Work";renderTechnicianWork();toast(editId?"Technician work updated":"Technician work saved")}
 
 function renderTechnicianWork(){fillTechnicianWorkOptions();const q=(document.getElementById("twSearch")?.value||"").toLowerCase();const fd=document.getElementById("twFilterDate")?.value||"";const ft=Number(document.getElementById("twFilterTech")?.value||0);const rows=(db.technicianWork||[]).filter(x=>(!q||[x.technician,x.customer,x.details,x.status].join(" ").toLowerCase().includes(q))&&(!fd||x.date===fd)&&(!ft||Number(x.technicianId)===ft)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));const el=document.getElementById("technicianWorkTable");if(el)el.innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.technician)}</td><td>${esc(x.customer||"-")}</td><td>${esc(x.details)}</td><td><span class="tw-status">${esc(x.status)}</span></td><td>${money(x.amount||0)}</td><td><button class="btn" onclick="editTechnicianWork(${JSON.stringify(String(x.id))})">✏️ Edit</button> <button class="btn red" onclick="deleteTechnicianWork(${JSON.stringify(String(x.id))})">🗑 Delete</button></td></tr>`).join(""):'<tr><td colspan="7" class="empty">No technician work found.</td></tr>'}
 
 function openTechnicianPortal(){const u=location.href.split("#")[0]+"?technician=1";prompt("Technician mobile page link",u)}
-function renderTechnicianPortal(){if(new URLSearchParams(location.search).get("technician")!=="1")return;document.body.innerHTML=`<div style="max-width:560px;margin:0 auto;padding:18px"><div class="panel"><h2>Antic R.O System — Technician Work</h2><p class="mini">Enter today's work details</p><div class="field"><label>Technician</label><select id="portalTech"></select></div><div class="field"><label>Customer</label><select id="portalCustomer"></select></div><div class="field"><label>Date</label><input id="portalDate" type="date" value="${today}"></div><div class="field"><label>Work Details</label><textarea id="portalDetails" rows="6"></textarea></div><div class="field"><label>Status</label><select id="portalStatus"><option>Complete</option><option>Open</option><option>Pending</option><option>Hold</option><option>Cancel</option></select></div><div class="field"><label>Amount</label><input id="portalAmount" type="number" value="0"></div><button class="btn primary" onclick="portalSaveWork()">Submit Work</button></div></div>`;const pt=document.getElementById("portalTech"),pc=document.getElementById("portalCustomer");pt.innerHTML='<option value="">Select Technician</option>'+db.technicians.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");pc.innerHTML='<option value="">Select Customer</option>'+db.customers.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("")}
-function portalSaveWork(){const technicianId=Number(document.getElementById("portalTech").value||0),customerId=Number(document.getElementById("portalCustomer").value||0),details=document.getElementById("portalDetails").value.trim();if(!technicianId||!details){alert("Technician and work details are required");return}const tech=db.technicians.find(x=>x.id===technicianId),c=db.customers.find(x=>x.id===customerId);db.technicianWork.push({id:Date.now(),date:document.getElementById("portalDate").value||today,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status:document.getElementById("portalStatus").value,amount:Number(document.getElementById("portalAmount").value||0)});persist();alert("Work submitted");document.getElementById("portalDetails").value=""}
+function renderTechnicianPortal(){if(new URLSearchParams(location.search).get("technician")!=="1")return;document.body.innerHTML=`<div style="max-width:560px;margin:0 auto;padding:18px"><div class="panel"><h2>Antic R.O System — Technician Work</h2><p class="mini">Enter today's work details</p><div class="field"><label>Technician</label><select id="portalTech"></select></div><div class="field"><label>Customer</label><select id="portalCustomer"></select></div><div class="field"><label>Date</label><input id="portalDate" type="date" value="${today}"></div><div class="field"><label>Work Details</label><textarea id="portalDetails" rows="6"></textarea></div><div class="field"><label>Status</label><select id="portalStatus"><option>Complete</option><option>Open</option><option>Pending</option><option>Hold</option><option>Cancel</option></select></div><div class="field"><label>Amount</label><input id="portalAmount" type="number" value="0"></div><button class="btn primary" onclick="portalSaveWork()">Submit Work</button></div></div>`;const pt=document.getElementById("portalTech"),pc=document.getElementById("portalCustomer");pt.innerHTML='<option value="">Select Technician</option>'+techRecords().map(x=>`<option value="${x.id}">${esc(x.name||"Unnamed")}</option>`).join("");pc.innerHTML='<option value="">Select Customer</option>'+db.customers.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.mobile||"")}</option>`).join("")}
+function portalSaveWork(){const technicianId=Number(document.getElementById("portalTech").value||0),customerId=Number(document.getElementById("portalCustomer").value||0),details=document.getElementById("portalDetails").value.trim();if(!technicianId||!details){alert("Technician and work details are required");return}const tech=techRecords().find(x=>String(x.id)===String(technicianId)),c=db.customers.find(x=>x.id===customerId);db.technicianWork.push({id:Date.now(),date:document.getElementById("portalDate").value||today,technicianId,technician:tech?.name||"",customerId,customer:c?.name||"",mobile:c?.mobile||"",details,status:document.getElementById("portalStatus").value,amount:Number(document.getElementById("portalAmount").value||0)});persist();alert("Work submitted");document.getElementById("portalDetails").value=""}
 function renderDashboard(){
   const salesTotal=db.sales.reduce((a,x)=>a+Number(x.total||0),0);
   const monthKey=today.slice(0,7);
@@ -2754,7 +2789,7 @@ function renderDashboard(){
   const monthSales=db.sales.filter(x=>String(x.date||"").slice(0,7)===monthKey).reduce((a,x)=>a+Number(x.total||0),0);
   const pendingCount=db.sales.filter(x=>Number(x.pending||Math.max(0,Number(x.total||0)-Number(x.paid||0)))>0).length;
   const serviceToday=db.services.filter(x=>x.date===today && !["Completed","Cancelled"].includes(x.status)).length + db.customers.filter(x=>x.nextService===today).length;
-  const techActive=db.technicians.filter(x=>String(x.status||x.availability||"").toLowerCase().includes("active") || String(x.status||x.availability||"").toLowerCase().includes("available")).length;
+  const techActive=techRecords().filter(x=>["active","available","busy"].includes(String(x.status||x.availability||"").trim().toLowerCase())).length;
   const pendingTotal=db.sales.reduce((a,x)=>a+Number(x.pending||0),0);
   const openServices=db.services.filter(x=>!['Completed','Cancelled'].includes(x.status)).length;
   const amcActive=(db.amcs||[]).filter(x=>!x.end||daysFromToday(x.end)>=0).length;
@@ -2773,7 +2808,7 @@ function renderDashboard(){
   mPending.textContent=money(pendingTotal);
   mService.textContent=openServices;
   mAMC.textContent=amcActive;
-  mTech.textContent=db.technicians.length;
+  mTech.textContent=techRecords().length;
   document.getElementById('mLowStock').textContent=lowStock;
   document.getElementById('amcExpiringText').textContent=amcExpiring.length;
   mFollow.textContent=db.leads.filter(x=>x.follow===today&&x.status!=='Lost').length;
@@ -2962,19 +2997,44 @@ function reconcileServiceInventory(service,previous){
   }else service.inventoryDeducted=false;
 }
 function renderTech(){
-  const q=(document.getElementById("techSearch")?.value||"").toLowerCase().trim();
-  const filter=document.getElementById("techStatusFilter")?.value||"";
-  const all=db.technicians||[];
-  const active=all.filter(x=>["active","available"].includes(String(x.status||"").toLowerCase())).length;
-  const assigned=all.reduce((n,x)=>n+db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length,0);
-  const busy=all.filter(x=>String(x.status||"").toLowerCase()==="busy").length;
-  const available=all.filter(x=>String(x.status||"").toLowerCase()==="available").length;
+  const q=(document.getElementById("techSearch")?.value||"").trim().toLowerCase();
+  const filter=(document.getElementById("techStatusFilter")?.value||"").trim().toLowerCase();
+  const all=techRecords();
+  const normStatus=x=>String(x.status||x.availability||"Inactive").trim().toLowerCase();
+  const isActive=x=>["active","available","busy"].includes(normStatus(x));
+  const active=all.filter(isActive).length;
+  const assigned=all.reduce((n,x)=>n+(db.services||[]).filter(s=>
+    (String(s.technicianId??"")===String(x.id)||String(s.tech||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase()) &&
+    !["completed","cancelled"].includes(String(s.status||"").toLowerCase())
+  ).length,0);
+  const busy=all.filter(x=>normStatus(x)==="busy").length;
+  const available=all.filter(x=>normStatus(x)==="available").length;
   const summary=document.getElementById("techSummary");
-  if(summary) summary.innerHTML=`<div class="ref-summary-card"><div class="ref-summary-icon tech-icon-blue">♟</div><div class="ref-summary-copy"><div class="label">TOTAL TECHNICIANS</div><div class="value">${all.length}</div><div class="sub">Registered technicians</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-green">✓</div><div class="ref-summary-copy"><div class="label">ACTIVE</div><div class="value">${active}</div><div class="sub">Active / available</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-orange">⚒</div><div class="ref-summary-copy"><div class="label">OPEN JOBS</div><div class="value">${assigned}</div><div class="sub">Currently assigned</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-purple">↗</div><div class="ref-summary-copy"><div class="label">AVAILABLE</div><div class="value">${available}</div><div class="sub">${busy} busy</div></div></div>`;
-  const arr=all.filter(x=>{const hay=(String(x.name||"")+" "+String(x.mobile||"")+" "+String(x.area||"")).toLowerCase();return (!q||hay.includes(q))&&(!filter||String(x.status||"")===filter)});
+  if(summary) summary.innerHTML=`<div class="ref-summary-card"><div class="ref-summary-icon tech-icon-blue">♟</div><div class="ref-summary-copy"><div class="label">TOTAL TECHNICIANS</div><div class="value">${all.length}</div><div class="sub">Registered technicians</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-green">✓</div><div class="ref-summary-copy"><div class="label">ACTIVE</div><div class="value">${active}</div><div class="sub">Active / available / busy</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-orange">⚒</div><div class="ref-summary-copy"><div class="label">OPEN JOBS</div><div class="value">${assigned}</div><div class="sub">Currently assigned</div></div></div><div class="ref-summary-card"><div class="ref-summary-icon tech-icon-purple">↗</div><div class="ref-summary-copy"><div class="label">AVAILABLE</div><div class="value">${available}</div><div class="sub">${busy} busy</div></div></div>`;
+  const arr=all.filter(x=>{
+    const hay=[x.name,x.mobile,x.area,x.status,x.availability].map(v=>String(v||"")).join(" ").toLowerCase();
+    return (!q||hay.includes(q))&&(!filter||normStatus(x)===filter);
+  });
   const body=document.getElementById("techTable");
   if(!body)return;
-  body.innerHTML=arr.length?arr.map(x=>{const jobs=db.services.filter(s=>(s.technicianId===x.id||s.tech===x.name)&&!["Completed","Cancelled"].includes(s.status)).length;return `<tr><td><div class="tech-person"><span class="tech-avatar">${esc(initials(x.name||"T"))}</span><div><b>${esc(x.name||"Unnamed")}</b><div class="mini">${esc(x.area||"Area not set")}</div></div></div></td><td><span class="tech-phone">${esc(x.mobile||"-")}</span></td><td>${esc(x.area||"-")}</td><td>${statusBadge(String(x.status||"Inactive"))}</td><td><span class="tech-job-badge ${jobs?'has-jobs':''}">${jobs}</span></td><td><div class="tech-actions"><button class="btn" title="Call technician" aria-label="Call technician" onclick="callNo('${String(x.mobile||"").replace(/'/g,"\'")}')">📞</button><button class="btn red" title="Delete technician" aria-label="Delete technician" onclick="del('technicians',${x.id})">🗑</button></div></td></tr>`}).join(""):`<tr><td colspan="6" class="empty">No technicians found.</td></tr>`;
+  body.innerHTML=arr.length?arr.map(x=>{
+    const jobs=(db.services||[]).filter(s=>
+      (String(s.technicianId??"")===String(x.id)||String(s.tech||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase()) &&
+      !["completed","cancelled"].includes(String(s.status||"").toLowerCase())
+    ).length;
+    const phone=String(x.mobile||"").replace(/[^0-9+]/g,"");
+    return `<tr><td><div class="tech-person"><span class="tech-avatar">${esc(initials(x.name||"T"))}</span><div><b>${esc(x.name||"Unnamed")}</b><div class="mini">${esc(x.area||"Area not set")}</div></div></div></td><td><span class="tech-phone">${esc(x.mobile||"-")}</span></td><td>${esc(x.area||"-")}</td><td>${statusBadge(String(x.status||x.availability||"Inactive"))}</td><td><span class="tech-job-badge ${jobs?'has-jobs':''}">${jobs}</span></td><td><div class="tech-actions"><button class="btn" title="Edit technician" aria-label="Edit technician" onclick="openTechModal(${JSON.stringify(String(x.id))})">✏️</button><button class="btn" title="Call technician" aria-label="Call technician" onclick="callNo(${JSON.stringify(phone)})">📞</button><button class="btn" title="WhatsApp technician" aria-label="WhatsApp technician" onclick="wa(${JSON.stringify(x.mobile||"")},'Hello, work update from Antic R.O System')">💬</button><button class="btn red" title="Delete technician" aria-label="Delete technician" onclick="deleteTechnician(${JSON.stringify(String(x.id))})">🗑</button></div></td></tr>`;
+  }).join(""):`<tr><td colspan="6" class="empty">${all.length?"No matching technicians. Clear search/status filters to see all records.":"No technicians registered. Use Add Technician to create the first record."}</td></tr>`;
+}
+function deleteTechnician(id){
+  const x=techRecords().find(t=>String(t.id)===String(id));
+  if(!x)return;
+  const hasHistory=(db.services||[]).some(s=>String(s.technicianId??"")===String(id)||String(s.tech||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase())||
+    (db.technicianWork||[]).some(w=>String(w.technicianId??"")===String(id));
+  if(hasHistory){toast("Technician has service/work history. Set status to Off Duty or Inactive instead of deleting.");return}
+  if(!confirm("Delete technician "+(x.name||"")+"?"))return;
+  db.technicians=db.technicians.filter(t=>t&&String(t.id)!==String(id));
+  persist();renderTech();fillTechnicianWorkOptions();toast("Technician deleted");
 }
 let editingExpenseId=null;
 function openExpenseModal(id=null){editingExpenseId=id;document.getElementById("expenseModalTitle").textContent=id?"✏️ Edit Expense":"💸 Add Expense";const x=id?db.expenses.find(e=>e.id===id):null;expenseDate.value=x?.date||today;expenseCategory.value=x?.category||"Other";expenseDescription.value=x?.description||"";expenseAmount.value=Number(x?.amount||0);expenseMode.value=x?.mode||"Cash";expenseNotes.value=x?.notes||"";openModal("expenseModal")}
@@ -3175,7 +3235,7 @@ async function deleteSale(id){
     if(legacySnap.exists && legacySnap.data()?.data){
       const legacyData=normalizeLoadedDB(legacySnap.data().data);
       legacyData.sales=(legacyData.sales||[]).filter(x=>String(x.id)!==String(id) && String(x.invoiceNo||"")!==String(sale.invoiceNo||""));
-      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.77"},{merge:true});
+      await legacy.set({data:legacyData,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),version:"v22.78"},{merge:true});
     }
 
     // Do not run the full sync here: it can turn a successful deletion into a
